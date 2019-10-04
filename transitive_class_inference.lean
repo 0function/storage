@@ -100,156 +100,6 @@ meta def format_typed(e) := do
 	t ← infer_type' e,
 	pp e ⧺ "︓ " ⧺ t
 
-/-/
-@[reducible] meta def linkproofs := rb_map expr (option expr)
-@[reducible] meta def search_state := linkproofs × linkproofs × list expr
-
---For shared keys value is that of the first parameter (m1). 
-meta def native.rb_map.union{K V}(m1 m2) :=
-	@rb_map.fold K V _ m1 m2 (λk v m, @rb_map.insert K V m k v)
-meta def native.rb_map.remove{K V}(m1 m2) :=
-	@rb_map.fold K V _ m2 m1 (λk v m, @rb_map.erase K V m k)
-
-
-meta def remove_const's_levels: expr → expr
-| (expr.const n _) := expr.const n []
-| e := e
-
---R(...) x y {implicits}  ⟼  (R,x,y)
---Universe parameters may differ, which is why the actual relation is approximated by its absolute head. Furthermore auto_param is unfolded. (Due to its technical nature the definition of this function should not be assumed stable.)
-meta def app2_view: tactic expr → tactic(expr × expr × expr) := λE, do
-	e ← E,
-	let e := if expr.const_name e.get_app_fn = `auto_param then e.app_fn.app_arg else e,
-	let f := e.app_fn,
-	t ← infer_type f,
-	match t with 
-	| expr.pi _ default _ _ := (remove_const's_levels f.get_app_fn, f.app_arg, e.app_arg)
-	| expr.pi _ _ _ _ := app2_view f
-	| _ := fail "Tactic app2_view failed."
-end
-
-
-meta def top_quant_help: list expr → expr → expr × list expr
-| ts (expr.pi v i t b) := if b.has_var_idx ts.length
-	then top_quant_help(ts++[t]) b
-	else (expr.pi v i t b, ts)
-| ts e := (e, ts)
---∀x₀...∀xₙ : e(x₀,...,xₙ)  ⟼  ([x₀,...,xₙ], e(#0,...,#n))  but simple implications/functions (detected from lack of xⱼ dependence) are left as is. 
-meta def top_quantifiers := top_quant_help[]
-
-
---Instanciate quantified variables with fresh metavariables. 
-meta def fresh_instance(e) := do
-	t ← infer_type e,
-	let quant_count := (top_quantifiers t).snd.length, 
-	mrepeat quant_count (λx, 𝔼```(%%x _)) e
-
-
-meta def is_link(R): option expr → tactic unit
-| none := skip
-| (some e) := do (r,_) ← app2_view(fresh_instance e >>= infer_type), unify r R
-
-meta def why_can't_be_inlined: list expr → option expr × list expr
-| [] := (none, [])
-| (e::c') := (some e, c')
-
-meta def list.fold_links_loop{T}(R: expr): list expr → T → (option expr → T → tactic(T×bool)) → tactic T := 
-	λc t f, let (e,c') := why_can't_be_inlined c in do
-		--If e ∃ but isn't link, continue to next round. Otherwise call f and then continue, stop or fail depending on the result. 
-		x ← try_core(is_link R e),
-		(t', go) ← x.maybe (t,tt) (𝓒(f e t)),
-		if go then c'.fold_links_loop t' f else t'
-
---For each (e: [∀] R a b) update by f(some e), and after that update by f none. Fail propagates. Stop signal is (_,ff). 
-meta def fold_links{T}(R: expr)(o: T)(f: option expr → T → tactic(T×bool)): tactic T := do
-	c ← local_context,
-	c.fold_links_loop R o f
-
-
---For p∊lps extend by trans p h. Fail does nothing. 
-meta def link(trans: option expr → expr → tactic expr)(h: expr)(lps: linkproofs): tactic(rb_map expr (option expr)) :=
-	lps.mfold lps (λ k p lps', (do
-		p' ← trans p h,
-		(_,k',_) ← app2_view(infer_type p'),
-		if lps'.contains k' then lps' else lps'.insert k' p'
-	) <|> lps')
-
-
-meta def select_transitivity_for(R: expr): tactic(expr → expr → tactic expr) := (do
-	trans_list ← attribute.get_instances `transitivity,
-	trans_name::_ ← trans_list.mfilter(λtr, (do
-		(`(%%Rxy → %%Ryz → %%Rxz), _) ← top_quantifiers <$> (𝔼ₙ tr >>= infer_type),
-		(r,_) ← app2_view Rxy,
-		unify r R
-		$> tt) <|> ff),
-
-	pure(λ Rab Rbc, do
-		trans ← 𝔼ₙ trans_name, --Must be redone on every call!
-		--Why is id required as head here (but not in fresh_instance)?
-		(do e ← 𝔼``(id %%trans %%Rab %%Rbc), pure"Expr link "⧺e>>=trace, e) <|> trace"( ( ( OHI, ks. 2 ed. ) ) )" >> failed)
-) <|> do
-	trans_list ← attribute.get_instances `transitivity,
-	pure"Tactic trans_closure→select_transitivity_for didn't found @[transitivity] theorem for the relation\n" ⧺ R ⧺ "
-Tested candidates were:" -⧺ trans_list.mmap(𝔼ₙ >=> format_typed) >>= fail
-
-
---(new, old, inf, i:is) → (i⬝old ∪ i:inf ⬝ new  \... ,  old ∪ new, i:inf, is)
-meta def trans_closure: tactic unit := do
-	(R,x,y) ← app2_view target,
-	trans ← select_transitivity_for R,
-	let trans: option expr → expr → tactic expr := 
-		(λ p' t, do	t ← fresh_instance t, --OK for locals, but tagged theorems seem to come directly with metavariables...
-			option.cases_on p' 
-				(do (_,_,r) ← app2_view(infer_type t), unify y r $> t)
-				(trans t)
-		),
-	let init: search_state := (rb_map.of_list[(y,none)], mk_expr_map, []),
-	
-	(old, new, inf) ← fold_links R init (λe st, do
-		trace "----Iteration----",
-		let (old, new, inf) := st,
-		let inf: list _ := e.maybe inf (flip list.cons inf),
-		let L := link trans,
-		
-		e_old ← e.maybe pure L old,
-		inf_new ← inf.foldl (λ new' i, native.rb_map.union <$> new' <*> L i new) new,
-		let new_old := old.union new,
-		let st' := (new_old, (e_old.union inf_new).remove new_old, inf),
-		
-		(λgo, (st', go)) <$>
-			--Finish if y has been reached or nothing changes. (Faster tests are possible, and this fails to prove reflexivity.)
-			(new_old.keys.mfirst(λk, unify x k $> ff) 
-				<|> (e≠none) || (if new_old.size ≠ old.size then tt else ff) || (inf_new.size > 0))),
-	
-	let all := old.union new,
-	all.keys.mfirst(λk, unify x k >> (all.ifind k).maybe failed exact)
-	--<|> interactive.apply_instance
-	<|> pure"Tactic trans_closure couldn't link to
-" ⧺ x ⧺ "   ⟵from—   " ⧺ y ⧺ "
-—Linking to the following was succesful:" -⧺ (all.filter(≠none)).keys ⧺ "
-—The following instances were tried:" -⧺ inf >>= fail
-
-
-meta def transitivity_attribute: user_attribute unit :={
-	name:= `transitivity, 
-	descr:= "Tag used by trans_closure for transitivity theorems of the form ∀{x y z}, R x y → R y z → R x z. Relation R may additionally contain implicit type class constraints after its explicit parameters."
-}
-run_cmd attribute.register `transitivity_attribute
-
-@[transitivity] def eq_trans_help := @eq.trans
-@[transitivity] def lt_trans_help := @lt.trans
-@[transitivity] def le_trans_help := @le_trans
-@[transitivity] def gt_trans_help := @gt.trans
-@[transitivity] def ge_trans_help := @ge_trans
-
-theorem test_theorem{x y z : ℕ}(lxy: x≤y)(lyz: y≤z): 0≤1+z*y+y := by{
-	have a12 : 0≤1 := dec_trivial,
-	have tls : ∀ n:ℕ, 1+n ≤ 1+z*n := sorry,
-	have slt : ∀ n:ℕ, n ≤ n+y := sorry,
-	have a23 : 2≤3 := dec_trivial,
-	trans_closure,
-}
---/
 
 meta instance: has_emptyc name_set := ⟨mk_name_set⟩
 meta instance: has_insert name name_set := ⟨flip name_set.insert⟩
@@ -276,9 +126,9 @@ meta def a1:=a 1 meta def a2:=a 2 meta def a3:=a 3
 meta def ta := target >>= trace >> assumption
 def A(x:Type)(_:x. a1) := x
 def B(x:Type)(_:x. a2) := x
-def C(x:Type)(i:x): let b:= B x in A(B x) := i
-def D(x y:Type)(_:x. a1)(_:y. a2)(_:ℕ. a3) := ℕ
-def E(x:Type)(_:x)(n:ℕ): D x x := nat.zero
+def C(x:Type)(i:x)(_: A(B x)): A(B x) := i
+def D(x:Type)(_:x. a1)(_:x. a2) := ℕ
+def E(x:Type)(_:x): D x := nat.zero
 --Problem 2: ∄ dynamic attributes
 --Problem 3: rb_lmap is not reflected (can the instance be added?) ⇒ can't be used as attribute parameter
 --The sorry can be used to mark branches that should be unreachable. This doesn't disturb the structure of the algorithm, and the place of an error is recorded for debugging. The same can't be achieved by tactic's fail, because the algorithm backtracks on some failures. The downside is that the algorithm can't be used outside its intented scope, because the caller can't recover from sorry either. 
@@ -689,11 +539,15 @@ instance quot{i: G↪H}{j: H↪K}: embed(H∕G)(K∕G) := {
 	refl,refl,end,
 }
 
---Next the normality is addied to the embeddings. Note that embed_normal is not an extension of embed_group but instead a property for it. This way it should be applicable to compositions of embeddings more flexibly.
+--Next the normality is added to the embeddings. Note that embed_normal is not an extension of embed_group but instead a property for it. This way it should be applicable to compositions of embeddings more flexibly.
 class embed_normal(G H : Type)[group G][group H](i:✓ G↪H) := {normal: normal_subgroup(range i)}
 infix `⊴`:50 := embed_normal
 
 instance{i: G↪H}[ni: G⊴H]: normal_subgroup(range i) := ni.normal
+@[priority std.priority.default+1] instance{i: G↪H}[ni: G⊴H]: group(H∕G) := by{
+	change group(quotient_group.quotient _), 
+	apply_instance,
+}
 
 instance right_normal{i: G↪H}{j: H↪K}[nji: G⊴K]: normal_subgroup(range i) := ⟨by{
 	intros,
@@ -787,14 +641,110 @@ instance group_let{i: G↪H}{j: H↪K}[nj: H⊴K][nji: G⊴K]: let hg:=H∕G, kg
 	whnf_target, 
 	apply @quotient_group.group _ _ _ this.normal,
 }
---instance group_K'H{j: H↪K}[nj: H⊴K]: group(K∕H) := sorry
 
 end embed_group
 open embed_group
 
-set_option trace.class_instances true
+structure group_homs(G H)[group G][group H] := (fn: G→H) (hom: is_group_hom fn)
+infixr ` ⇒ ` := group_homs
+
+instance homs_to_fun: has_coe_to_fun(group_homs G H) :={
+	F:= λ_, G→ H,
+	coe:= group_homs.fn
+}
+
+instance packed_is_group_hom{f: G⇒H}: is_group_hom f := f.hom
+
+def compose(f: H⇒K)(g: G⇒H): G⇒K := ⟨f ∘ g, @is_group_hom.comp _ _ _ _ g g.hom _ _ f f.hom⟩
+
+@[simp]lemma compose_fn(f: H⇒K)(g: G⇒H): (compose f g).fn = f.fn ∘ g.fn := rfl
+
+def lift'h{i: G↪H}[ni: G⊴H](f: H⇒K)(fG_1: ∀g, f(i g) = 1): H∕G ⇒ K := let iG: set H := range i in ⟨@quotient_group.lift H (by apply_instance) iG ni.normal K _inst_3 f f.hom (by tidy), @quotient_group.is_group_hom_quotient_lift H _ iG ni.normal K _ f f.hom (by tidy)⟩
+
+def quotient_preserves_isom{S N : set G}[normal_subgroup S][normal_subgroup N](SeN: S = N): quotient S ≅ quotient N := via_biject_hom
+	(quotient_group.lift S quotient_group.mk (begin--well defined
+		intros,
+		tactic.unfreeze_local_instances,
+		subst SeN,
+		change _ = quotient_group.mk _,
+		apply eq.symm,
+		simp[quotient_group.mk],
+		change _*x ∈ _,
+		simpa,
+	end))
+	(begin--bijective
+		tidy,
+				change quotient_group.mk _ = quotient_group.mk _ at a,
+				change quotient_group.mk _ = quotient_group.mk _,
+				tactic.unfreeze_local_instances,
+				subst SeN,
+				apply a,
+			exact quotient_group.mk b,
+		refl,
+	end)
+	(by apply_instance)
+
+
+private def f[G↪H][H↪K][H⊴K][G⊴K]: K∕G ⇒ K∕H :=
+	lift'h ⟨quotient_group.mk, by tidy⟩ begin
+		intros,
+		change quotient_group.mk _ = quotient_group.mk _,
+		apply eq.symm,
+		apply quot.sound,
+		tidy,
+	end
+
+
 theorem isomorphism_theorem_3{i: G↪H}{j: H↪K}[nj: H⊴K][nji: G⊴K]: 
-	let hg:=H∕G, kg:=K∕G in kg∕hg ≅ K∕H := sorry
+	let hg:=H∕G, kg:=K∕G in kg∕hg ≅ K∕H := by{
+
+have qk:= quotient_ker_isom_of_surjective f.fn (λx:K∕H, begin
+	induction x,
+	change ∃ y: K∕G, f.fn y = quotient_group.mk x,
+	exact⟨quotient_group.mk x, begin
+		simp[f, lift'h],
+		refl,
+	end⟩,
+	refl,
+end),
+let J: H∕G ↪ K∕G := infer_instance,
+have k: ker f.fn = range J,
+	ext,
+	induction x,
+	simp[ker, f, lift'h],
+	change quotient_group.mk _ = quotient_group.mk _ ↔ _,
+	have: (quotient_group.mk x = quotient_group.mk 1) = (quotient_group.mk 1 = quotient_group.mk x),
+		ext, constructor; apply eq.symm,
+	rw this,
+	simp[quotient_group.mk],
+	change _ * x ∈ _ ↔ _,
+	simp,
+	constructor;intro h; rcases h with ⟨y,jyx⟩,
+		exact⟨quotient_group.mk y, begin
+			rw←jyx,
+			refl,
+		end⟩,
+	induction y,
+	change quotient_group.mk _ = quotient_group.mk _ at jyx,
+	simp[quotient_group.mk] at jyx,
+	change _ * _ ∈ _ at jyx,
+	rcases jyx with ⟨z,e⟩,
+	have xe: x = _ * _,
+		apply inv_mul_eq_iff_eq_mul.mp,
+		exact e.symm,
+	change x = j _ * j _ at xe,
+	rw[←is_group_hom.mul j] at xe,
+	exact⟨y*_, by rw xe;refl⟩,
+	refl,refl,
+apply flip group_equiv.trans qk,
+change quotient_group.quotient _ ≅ _,
+have: is_subgroup(range J), apply_instance,
+have: is_subgroup(ker f.fn) := @is_group_hom.preimage (K∕G) (K∕H) _ _ f.fn f.hom (is_subgroup.trivial _) _,
+have: H∕G ⊴ K∕G, apply embed_group.normal_quot,
+apply @quotient_preserves_isom _ _ _ _ this.normal (by apply_instance) k.symm,
+apply_instance,
+exact f.hom,
+}
 
 
 end group_equiv
