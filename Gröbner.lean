@@ -1,796 +1,24 @@
-import group_theory.coset ring_theory.matrix ring_theory.determinant ring_theory.ideals algebra.gcd_domain algebra.euclidean_domain data.int.modeq group_theory.quotient_group data.equiv.algebra group_theory.subgroup tactic.ring tactic.fin_cases tactic.tidy algebra.ring algebra.field linear_algebra.multivariate_polynomial
-open tactic native environment sum interactive lean.parser ideal mv_polynomial classical lattice declaration multiset
---local attribute [instance, priority 0] prop_decidable
+import group_theory.coset ring_theory.ideals algebra.gcd_domain algebra.euclidean_domain data.int.modeq group_theory.quotient_group data.equiv.algebra group_theory.subgroup tactic.ring tactic.fin_cases tactic.tidy algebra.ring algebra.field linear_algebra.multivariate_polynomial
+open tactic prod native environment interactive lean.parser ideal classical lattice declaration rbtree
+infixl ` ⬝ ` := has_mul.mul
+notation x`²`:99 := x⬝x
+notation ` ` binders ` ↦ ` f:(scoped f, f) := f
+notation `⟮` binders ` ↦ ` f:(scoped f, f) `⟯`:= f
 
-/-Questions:
-	Meta looping or not
-	Are orders available
---/
+def flip_over_2{A B C D}(f: A→B→C→D) := z x y ↦ f x y z
+infixl ` @₁`:99 := flip
+infixl ` @₂`:99 := flip_over_2
+infixr ` ∘₂ `:80 := (∘)∘(∘)
 
-section parameters{J: Type*}[decidable_eq J]{K:Type*}[field K][decidable_eq K]
+instance decidable_bool{b:bool}: decidable b := by{cases b, apply is_false, simp, apply is_true, simp}
 
-notation K`:[`:99 J `]` := mv_polynomial J K
-notation x`²`:66 := x^2
-
-@[simp] lemma simp_square(x:K): x² = x*x := by{
-	change _*_ = _,
-	apply congr_arg,
-	change _*_ = _,
-	apply mul_one,
+instance{X}: monoid(list X) := {
+	one := [],
+	mul := (++),
+	one_mul := by safe,
+	mul_one := list.append_nil,
+	mul_assoc := list.append_assoc,
 }
-
---unique_pairs[xⱼ | j] = [(xᵢ,xⱼ) | i<j]
-def list.unique_pairs{T}: list T → list(T×T)
-| [] := []
-| (x::xs) := xs.map(λy,(x,y)) ++ xs.unique_pairs
-
-def coef(P: K:[J])(m: J→₀ℕ): K := by{
-	unfold mv_polynomial at P,
-	exact P m,
-}
-
-meta def aa := tactic.repeat(interactive.assumption <|> contradiction)
-
-
-@[reducible] def monomi := J→₀ℕ
-
-private class mo := 
-	(ord: decidable_linear_order monomi)
-	(neutral_least: ∀ m: monomi, 0 ≤ m)
-	(multiplicative: ∀ m n p: monomi, n ≤ m → n+p ≤ m+p)
-
-def monomial_order := mo
-
-instance dlo_mo[mo]: decidable_linear_order monomi := mo.ord
-instance[mo]: lattice.semilattice_sup_bot(J→₀ℕ) := {
-	bot := 0,
-	bot_le := mo.neutral_least,
-	sup := λx y, if x ≤ y then y else x,
-	sup_le := by{
-		intros,
-		unfold lattice.has_sup.sup,
-		rcases em(a ≤ b); simpa[h],
-	},
-	le_sup_left := by {
-		intros,
-		unfold lattice.has_sup.sup,
-		rcases em(a ≤ b); simp[h]; aa
-	},
-	le_sup_right := by{
-		intros,
-		unfold lattice.has_sup.sup,
-		rcases em(a ≤ b); simp[h],
-		rcases @linear_order.le_total _ {..mo.ord} a b, aa
-	},
-..mo.ord}
---True division if n|m, otherwise truncated e.g. xy/x² = y. 
-instance[mo]: has_div(J→₀ℕ) := ⟨λm n, finsupp.on_finset m.support (λi, m i - n i) (by{
-	intros,
-	simp,
-	by_contra,
-	simp[a_2] at a_1,
-	aa,
-})⟩
-
-
-def mv_polynomial.max_mono[mo](P: K:[J]) := P.support.sup id
-
-def mv_polynomial.max_coef[mo](P: K:[J]) := coef P P.max_mono
-
-def scale_monic[mo](P: K:[J]) := C P.max_coef⁻¹ * P
-
---S-polynomial of a pair of monic polynomials. 
-def monicS[mo](PR: K:[J] × K:[J]) := 
-	let p:= PR.fst.max_mono, r:= PR.snd.max_mono, M:= p ⊔ r in
-	monomial(M/p)1 * PR.fst - monomial(M/r)1 * PR.snd
-
-
-lemma or_not_if_or{a b : Prop}(h: a ∨ b): a ∨ (¬a ∧ b) := by{
-	cases h,
-		left, aa,
-	cases em a,
-		left, aa,
-	right, constructor, aa
-} 
-meta def orn't(h: parse ident): tactic _ := do
-	x ← get_local h,
-	interactive.have h none ``(or_not_if_or %%x),
-	try(clear x),
-	get_local h >>=	cases_core,
-	swap,
-	x ← get_local h,
-	n ← get_unused_name h none,
-	cases_core x [n,h],
-	swap
-run_cmd add_interactive [`orn't]
-
-
-class decidable_founded_order(X: Type*) extends 
-	decidable_linear_order X,
-	is_well_order X (<),
-	has_bot X --This is now always inhabited, but bottom needs to be computable. 
-:=(bot_le: ∀a:X, ⊥ ≤ a)
-
-variables{X: Type*}[decidable_founded_order X][decidable_eq X]{S T : multiset X}
-
-instance semilattice_sup_bot_of_linear_order_bot: semilattice_sup_bot X := {
-	bot:= ⊥,
-	bot_le:= decidable_founded_order.bot_le,
-..lattice.lattice_of_decidable_linear_order}
-
---∑ cⱼ Xʲ ↦ ∑ βʲ | cⱼ≠0
---Kertoimista johtuen polynomien järi ei ole antisymmetrinen. 
---instance{X}: has_coe(finset X)(set X) := ⟨λS, ↑S⟩
-
---@[reducible] private def top: X → with_top X := some
-
---def infimum(S: finset X) := match S.inf top with some n := n | _ := ⊥ end
-
-private def IM(S: finset X) := S≠∅ → S.sup id ∈ S
-lemma maximum_mem{S: finset X}: IM S := by{
-	have emp: IM(∅: finset X), aa,
-	have: ∀x, ∀ S: finset X, x ∉ S → IM S → IM(insert x S),
-		unfold IM,
-		intros,
-		cases em(S_1 = ∅); simp[h] at *,
-		simp[has_sup.sup,semilattice_sup.sup,semilattice_sup_bot.sup,lattice.sup,max],
-		cases em(x ≤ S_1.sup id); simp[h_1],
-		right,aa,
-	apply finset.induction emp this,
-}
-
-@[simp] lemma not_or_eq_not_and_not{a b : Prop}: (¬(a ∨ b)) = (¬a ∧ ¬b) := by{
-	ext,
-	constructor;intro,
-	repeat{cases em a; simp [h] at *, aa},
-}
-
-lemma gt_neq{X: Type u_3}[linear_order X]{x y : X}(h: x>y): ¬ x=y := by{
-	by_contra,
-	rw a at h,
-	exact lt_irrefl _ h,
-}
-
-@[simp] lemma gt_sup{x y z : X}: (x > y ⊔ z) = (x>y ∧ x>z) := by{
-	ext,
-	constructor; intro h,
-		constructor,
-			apply gt_of_gt_of_ge h (le_sup_left),
-		apply gt_of_gt_of_ge h (le_sup_right),
-	cases h with xy xz,
-	simp[has_sup.sup,semilattice_sup.sup,semilattice_sup_bot.sup,lattice.sup,max],
-	cases em(y≤z); simp[h], aa
-}
-
-private def ILNM(S: finset X) := ∀x, S≠∅ → x > S.sup id → x ∉ S
-lemma maximum_more_not_mem{S: finset X}: ILNM S := by{
-	have emp: ILNM(∅: finset X), intro, aa,
-	have: ∀x, ∀ S: finset X, x ∉ S → ILNM S → ILNM(insert x S),
-		unfold ILNM,
-		intros,
-		cases em(S_1 = ∅); simp[h] at *,
-			apply gt_neq, aa,
-		cases a_3,
-		constructor,
-			apply gt_neq _, aa,
-		apply a_1, aa,
-	apply finset.induction emp this,
-}
-
-lemma maximum_is_largest{S: finset X}{x:X}(h: x ∈ S): S.sup id ≥ x := by{
-	cases lt_or_ge (S.sup id) x, swap, aa,
-	cases em(S=∅), simp[h_2] at h, aa,
-	have:= maximum_more_not_mem _ h_2 h_1, aa,
-}
-
-def dif_set(S T : multiset X) := (S∪T).to_finset.filter(λx, S.count x ≠ T.count x)
-
-lemma neq_comm(x y : X): (x≠y) = (y≠x) := by tidy
-
-lemma dif_set_com: dif_set S T = dif_set T S := by{
-	unfold dif_set,
-	rw multiset.union_comm,
-	apply congr_fun,
-	have: (λx, S.count x ≠ T.count x) = (λx, T.count x ≠ S.count x),
-		ext,
-		simp,
-		constructor; tidy,
-	simp only[this],
-	apply congr_arg,
-	tidy,
-}
-
-lemma multiset_ext(h: ∀x, x ∈ (S∪T).to_finset → S.count x = T.count x): S = T := by{
-	ext,
-	cases em(a ∈ (S∪T).to_finset),
-		apply h a h_1,
-	tidy,
-	rw[list.count_eq_zero_of_not_mem h_1_left,list.count_eq_zero_of_not_mem h_1_right],
-}
-
-lemma dif_set_nonempty(h: S≠T): dif_set S T ≠ ∅ := by{
-	by_contra,
-	simp at a,
-	have SeT: ∀ x, x ∈ (S∪T).to_finset → S.count x = T.count x,
-		intros,
-		by_contra,
-		have: x ∈ dif_set S T := finset.mem_filter.mpr⟨a_1,a_2⟩,
-		simp[a] at this, aa,
-	apply h,
-	apply multiset_ext SeT,
-}
-
-lemma more_maximum_dif_set{x:X}(h: x > (dif_set S T).sup id): S.count x = T.count x := by{
-	cases em(S=T), rw[h_1],
-	have:= maximum_more_not_mem _ (dif_set_nonempty h_1) h,
-	simp[dif_set] at this,
-	cases em(x∈S ∨ x∈T),
-		exact this h_2,
-	tidy,
-	rw[multiset.count_eq_zero_of_not_mem h_2_left,multiset.count_eq_zero_of_not_mem h_2_right],
-}
-
-lemma mem_dif_set{x:X}(h: S.count x ≠ T.count x): x ∈ dif_set S T := by{
-	simp[dif_set],
-	constructor, swap, aa,
-	by_contra,
-	simp at a,
-	cases a,
-	rw[multiset.count_eq_zero_of_not_mem a_left,multiset.count_eq_zero_of_not_mem a_right] at h,
-	aa,
-}
-
-lemma max_dif_is_maximum_dif_set{x:X}(h: S.count x ≠ T.count x ∧ ∀y, y>x → S.count y = T.count y): x = (dif_set S T).sup id := by{
-	cases h with d a,
-	have:= lt_or_eq_of_le(maximum_is_largest(mem_dif_set d)),
-	cases this, swap, exact this,
-	cases em(S=T), simp[h] at d, aa,
-	have ei:= a _ this,
-	have di:= maximum_mem(dif_set_nonempty h),
-	simp[dif_set] at di,
-	cases di, aa,
-}
-
-meta def unlet(n: parse ident)(h: parse ident): tactic _ := do
-	expr.elet _ t b e ← get_local_type h,
-	tactic.definev n t b,
-	n' ← get_unused_name n none,
-	v ← get_local n,
-	interactive.have n' ``(%%v = %%b) ``(rfl),
-	v ← get_local n',
-	interactive.simp none tt [simp_arg_type.expr``(eq.symm %%v)] [] (loc.ns[some h])
-run_cmd add_interactive [`unlet]
-
-lemma or_simp_{A: Type u_3}{p r}{a b : A}(h: p ∨ a=b ∨ r): (a=b ∨ p) ∨ (b=a ∨ r) := by{
-	rcases h with h|h|h,
-			left,right,aa,
-		left,left,aa,
-	right,right,aa,
-}
-
-lemma eq_at_maximum_dif_set: (S.count((dif_set S T).sup id) = T.count((dif_set S T).sup id)) = (S=T) := by{
-	ext,
-	constructor;
-		intro h,
-		by_contra,
-		have:= maximum_mem(dif_set_nonempty a),
-		simp[dif_set] at this,
-		exact this.right h,
-	rw h,
-}
-
-lemma neq.symm{X:Type}{x y : X}(h: x≠y): y≠x := by finish
-
-instance: linear_order(multiset X) := {
-	le := λS T, S=T ∨ let x := (dif_set S T).sup id in S.count x < T.count x,
-	le_refl := by simp,
-	le_antisymm := by{
-		intros,
-		cases a_1, aa,
-		cases a_2, exact a_2.symm,
-		rw dif_set_com at a_2,
-		have:= lt_irrefl _ (lt.trans a_1 a_2), aa,
-	},
-	le_trans := by{
-		intros a b c ab bc,
-		orn't ab, rw ab, aa,
-		orn't bc, rw ←bc, right, aa,
-		unlet x ab,
-		unlet y bc,
-		right,
-		rcases lt_trichotomy x y with h|h|h, swap 3,
-				rw y_1 at h,
-				have ee:= (more_maximum_dif_set h).symm,
-				have: x = (dif_set a c).sup id,
-					apply max_dif_is_maximum_dif_set,
-					constructor,
-						rw ee,
-						apply neq.symm,
-						apply gt_neq , aa,
-					intros z v,
-					rw ← more_maximum_dif_set(gt.trans v h),
-					rw x_1 at v,
-					exact more_maximum_dif_set v,
-				rw this.symm at *,
-				simpa[ee],
-			swap,
-			rw ←h at bc,
-			have: x = (dif_set a c).sup id,
-				apply max_dif_is_maximum_dif_set,
-				constructor,
-					apply neq.symm,
-					apply gt_neq,
-					exact lt.trans ab bc,
-				intros z v,
-				rw [h,y_1] at v,
-				rw ← more_maximum_dif_set v,
-				rw [←y_1,←h,x_1] at v,
-				exact more_maximum_dif_set v,
-			simp[this.symm],
-			exact lt.trans ab bc,
-		rw x_1 at h,
-		have ee:= (more_maximum_dif_set h),
-		have: y = (dif_set a c).sup id,
-			apply max_dif_is_maximum_dif_set,
-			constructor,
-				rw ee,
-				apply neq.symm,
-				apply gt_neq _, aa,
-			intros z v,
-			rw more_maximum_dif_set(gt.trans v h),
-			rw y_1 at v,
-			exact more_maximum_dif_set v,
-		rw this.symm at *,
-		simpa[ee],
-	},
-	le_total := by{
-		intros,
-		simp,
-		rw @dif_set_com _ _ _ b a,
-		apply or_simp_,
-		rw ←(eq_at_maximum_dif_set: _ = (a=b)),
-		apply lt_trichotomy,
-	},
-}
-
-private def less := @has_lt.lt 
-	(multiset X) (@preorder.to_has_lt 
-	(multiset X) (@partial_order.to_preorder 
-	(multiset X) (@linear_order.to_partial_order 
-	(multiset X) multiset.linear_order)))
-
-instance: has_lt(multiset X) := ⟨less⟩
-instance it_: is_trichotomous (multiset X) (<) := ⟨lt_trichotomy⟩
-
-local infix `•`:66 := multiset.repeat
-
-private def SM(S: multiset X) := S.sup ∈ S ∨ S=∅
-lemma sup_mem: SM S := by{
-	apply multiset.case_strong_induction_on; unfold SM, tidy,
-	left,
-	rw(_: multiset.sup↑(list.cons a s) = a ⊔ multiset.sup s),
-	simp[has_sup.sup,semilattice_sup.sup,semilattice_sup_bot.sup,lattice.sup,max] at *,
-	cases em(a ≤ multiset.sup s); simp[h],
-	cases em(s=[]), simp[h_1,multiset.sup] at *, apply eq.symm,aa,
-	right,
-	cases a_1 s (by refl),aa,
-	rw((multiset.coe_eq_zero s).mp h_2) at h_1,aa,refl,
-}
-
-lemma sup_mem'(h: S≠∅): S.sup ∈ S := by{cases sup_mem, aa}
-
-lemma nonbottom_sup_mem(h: sup S ≠ ⊥): sup S ∈ S := by{
-	cases em(S=∅),
-		simp[h_1] at h, aa,
-	apply sup_mem' h_1,
-}
-
-lemma not_lt_0: ¬ S<0 := by{
-	simp[has_lt.lt,less,preorder.lt,partial_order.lt,linear_order.lt,preorder.lt._default,partial_order.lt._default],
-	intros,
-	cases a, simp[a] at *,aa,
-	cases a,
-}
-
-lemma multiset_lt_def(ts: T<S): T.count((dif_set T S).sup id) < S.count((dif_set T S).sup id) := by{
-	simp[has_lt.lt,less,preorder.lt,partial_order.lt,linear_order.lt,partial_order.lt._default,preorder.lt._default] at ts,
-	rw(_: dif_set S T = dif_set T S) at ts,
-	rw(_: (S=T) = (T=S)) at ts,
-	cases em(T=S); simp[h] at *, aa,
-	exact ts.left,
-ext, constructor; apply eq.symm,
-apply dif_set_com,
-}
-
-lemma sup_le_sup_of_lt(ts: T < S): T.sup ≤ S.sup := by{
-	let x:= (dif_set S T).sup id,
-	cases em(T=∅), simp[h],
-	by_contra,
-	have Tne0: T.count T.sup ≠ 0,
-		by_contra,
-		simp at a_1,
-		apply count_eq_zero.mp a_1,
-		cases sup_mem, aa,
-	have Seq0: S.count T.sup = 0,
-		apply count_eq_zero.mpr,
-		by_contra,
-		have:= le_sup a_1, aa,
-	rw ←Seq0 at Tne0,
-	have jlk:= maximum_is_largest (mem_dif_set Tne0),
-	have S0: S.count((dif_set T S).sup id) = 0,
-		apply count_eq_zero.mpr,
-		by_contra,
-		have:= le_trans jlk (le_sup a_1), aa,
-	have:= multiset_lt_def ts,
-	simp[S0] at this,
-	cases this,
-}
-
-def under(x)(S: multiset X) := S.sup < x
-
-lemma under_of_lt_under{x}(ts: T < S)(u: under x S): under x T := by{
-	have:= sup_le_sup_of_lt ts,
-	apply lt_of_le_of_lt, aa,
-}
-
-@[simp] lemma sup_repeat_bot{n}: (⊥•n).sup = (⊥:X) := by{
-	induction n; simp,
-		refl,
-	rw n_ih,
-	simp,
-}
-
-lemma sup_repeat_le{n}{x:X}: sup(x•n) ≤ x := by{
-	induction n; simp,
-	constructor,
-		refl,
-	aa
-}
-
-lemma repeat_le_of_le{n m}{x:X}(h: n≤m): 
-	@has_le.le 
-	(multiset X) (@preorder.to_has_le 
-	(multiset X) (@partial_order.to_preorder 
-	(multiset X) (@linear_order.to_partial_order 
-	(multiset X) multiset.linear_order)))
-	(x•n) (x•m) := by{
-	let d:= (dif_set (x•n) (x•m)).sup id,
-	have df: d = (dif_set (x•n) (x•m)).sup id := rfl,
-	change _ ∨ _ < _,
-	rw ←df,
-	cases eq_or_lt_of_le h,
-		left,
-		rw h_1,
-	right,
-	have: dif_set (x•n) (x•m) = {x},
-		ext,
-		constructor; intro; simp * at *,
-			unfold dif_set at a_1,
-			have: a ∈ to_finset(x•n ∪ x•m) := finset.filter_subset _ a_1,
-			simp at this,
-			cases this; exact eq_of_mem_repeat(by aa),
-		apply mem_dif_set,
-		simp,
-		by_contra,
-		rw ←a_2 at *,
-		exact lt_irrefl _ h_1,
-	simp[this, finset.sup, df] at *, aa,
-}
-
-lemma lt_of_repeat_lt{n m}{x:X}(h: x•n < x•m): n<m := by{
-	by_contra,
-	simp at a,
-	have:= not_lt_of_ge (repeat_le_of_le a), aa
-}
-
-@[simp] lemma count_repeat_other{x y : X}{n}(h: x≠y): count x (y•n) = 0 := by{
-	induction n; simp[count_cons_of_ne h], aa
-}
-
-@[simp] lemma not_lt_bot{x:X}: ¬ x < ⊥ := by{simp, apply bot_le}
-
-@[simp] lemma mem_dif_set_eq_count_ne_count{x:X}: (x ∈ dif_set S T) = (count x S ≠ count x T) := by{
-	ext, constructor; intro,
-		apply (finset.mem_filter.mp a).right,
-	apply mem_dif_set a,
-}
-
-@[simp] lemma dif_set_same: dif_set S S = ∅ := by{ext, constructor; simp}
-
-@[simp] lemma count_repeat{x y : X}{n}: count x (y•n) = ite(x=y) n 0 := by{cases em(x=y); simp[h]}
-
-lemma not_lt_self_sub{n m : ℕ}: ¬ n < n-m := by{
-	by_contra,
-	apply lt_irrefl _ (calc n+m < n : nat.add_lt_of_lt_sub_right a
-		... = n+0 : by simp
-		... ≤ n+m : nat.add_le_add_left(_:0≤m) n),
-	tidy,
-}
-
-lemma stupid{n m : ℕ}(h: nat.lt n m): n<m := by finish
-
-lemma eq_repeat_bot_of_sup_bot(h: sup S = ⊥): S = ⊥ • count ⊥ S := by{
-	tidy,
-	cases em(a=⊥); simp[h_1],
-	induction S; simp[sup] at *,
-	cases sup_eq_bot_iff.mp h with h_ t_,
-	rw list.count_cons_of_ne, apply S_ih t_,
-	rw h_, aa
-}
-
-private def IX := λx, ∀P: multiset X → Prop, (∀S, under x S → (∀T, T<S → P T) → P S) → ∀S, under x S → P S
-
-private lemma AIX: ∀(x:X), IX x := by{
-	intro,
-	apply @well_founded.induction _ (<) _inst_4.wf IX,
-	intros x ihX,
-	intros P ihP S Sx,
-	cases em(S=∅) with SO,
-		simp[SO] at *,
-		apply ihP 0,aa,
-		intros,
-		have:= not_lt_0 a,aa,
-	let y := sup S,
-	let with_y := λn(s: multiset X), s - y• count y s + y•n,
-	have count_with_y: ∀z m J, count z (with_y m J) = if z=y then m else count z J,
-		intros,
-		cases em(z=y); simp[h_1, with_y],
-	have with_y_split: ∀Z, Z = with_y (count y Z) (with_y 0 Z), 
-		intro, ext, simp[count_with_y],
-		cases em(a=y); simp[h_1],
-	let N := λn, ∀T, under y T → P(with_y n T),
-	have AN: ∀n, N n,
-		intro,
-		apply @nat.strong_induction_on N,
-		intros n ihN T Ty,
-		apply ihX y Sx (P ∘ with_y n) _ T (by aa),
-		simp,
-		intros T Ty ihXy,
-		apply ihP,
-			apply lt_of_le_of_lt _ Sx,
-			simp[with_y,under],
-			constructor,
-				calc sup (T - y•count y T) ≤ sup T : sup_mono(subset_of_le(multiset.sub_le_self _ _))
-				... ≤ sup S : le_of_lt Ty,
-			apply sup_repeat_le,
-		intros J JT,
-		let J₀ := with_y 0 J,
-		have Jis: J = with_y (count y J) J₀ := with_y_split J,
-		rw Jis,
-		have J₀y: under y J₀, 
-			cases em(y=⊥),
-				simp[h_1,under] at Ty, aa,
-			have: sup J₀ ≤ y,
-				change sup(with_y _ _) ≤ _,
-				simp[with_y],
-				apply le_trans(sup_mono(subset_of_le(multiset.sub_le_self _ _)) : sup(J - y• count y J) ≤ sup J),
-				apply le_trans ∘ sup_le_sup_of_lt, aa,
-				simp[with_y],
-				constructor, apply sup_repeat_le,
-				apply le_of_lt(lt_of_le_of_lt(sup_mono(subset_of_le(multiset.sub_le_self _ _)))Ty),
-			cases lt_or_eq_of_le this, aa,
-			rw ←h_2 at h_1,
-			have:= nonbottom_sup_mem h_1,
-			rw h_2 at this,
-			have:= count_eq_zero.mp _, aa, simp,
-		have Jy_n: count y J ≤ n,
-			by_contra,
-			simp at a,
-			rw(by simp : n = count y (with_y n T)) at a,
-			have JT := multiset_lt_def JT,
-			have: y = (dif_set J (with_y n T)).sup id,
-				apply max_dif_is_maximum_dif_set,
-				constructor, apply ne_of_gt a,
-				intros z yz,
-				have Tz0: ∀ z>y, count z (with_y n T) = 0,
-					intros z yz,
-					simp[count_with_y, ne_of_gt yz],
-					apply count_eq_zero_of_not_mem,
-					by_contra,
-					apply lt_irrefl _(calc z ≤ sup T : le_sup a_1
-						... < y : Ty
-						... < z : yz),
-				cases em(count z J > 0), swap, rw Tz0, simp at h_1, aa,
-				by_contra,
-				have: id z ≤ _ := finset.le_sup(mem_dif_set a_1),
-				simp at this,
-				rw(Tz0 _ (lt_of_lt_of_le yz this)) at JT,
-				cases JT,
-			rw ←this at JT,
-			apply lt_irrefl _ (lt.trans a JT),
-		cases eq_or_lt_of_le Jy_n,
-			rw h_1, rw[Jis,h_1] at JT,
-			have: J₀ < T,
-				have difs: dif_set J₀ T = dif_set (with_y n J₀) (with_y n T),
-					have: count y T = 0,
-						apply count_eq_zero_of_not_mem,
-						by_contra,
-						apply lt_irrefl _ (calc y ≤ sup T : le_sup a ... < y : Ty),
-					ext, constructor; intro m; simp at *; rw this at *; simp at *, aa,
-				have JT:= multiset_lt_def JT,
-				rw ←difs at JT,
-				have ei'y: ¬ (dif_set J₀ T).sup id = y,
-					by_contra on'y,
-					cases em(dif_set J₀ T = ∅) with emp, simp[emp,on'y.symm] at *, apply lt_irrefl _ JT,
-					have:= maximum_mem h_2,
-					rw[on'y,difs] at this,
-					simp at this, aa,
-				simp[has_lt.lt,less,preorder.lt,partial_order.lt,linear_order.lt,partial_order.lt._default,preorder.lt._default],
-				rw(dif_set_com : dif_set T J₀ = _),
-				simp[count_with_y,ei'y] at *,
-				constructor, right, aa,
-				constructor; by_contra f, simp[f] at *, apply not_lt_self_sub JT,
-				apply lt_irrefl _ (lt_trans (stupid f) JT),
-			apply ihXy J₀ this,
-		apply ihN _ h_1 _ J₀y,
-	cases em(y=⊥),
-		let P_ := λn, P(⊥•n),
-		have AP_: ∀n, P_ n,
-			intro,
-			simp[P_],
-			apply @nat.strong_induction_on P_,
-			intros n ih,
-			apply ihP, simp[under], rw ←h_1, aa,
-			intros,
-			have:= eq_repeat_bot_of_sup_bot(le_bot_iff.mp(calc sup T ≤ sup(⊥•n) : sup_le_sup_of_lt(by aa) ... = ⊥ : by simp)),
-			rw this at *,
-			apply ih _ (lt_of_repeat_lt a),
-		rw(eq_repeat_bot_of_sup_bot h_1),
-		apply AP_,
-	rw(with_y_split S),
-	apply AN (count y S) (with_y 0 S),
-	simp[with_y, under],
-	cases lt_or_eq_of_le(sup_mono(subset_of_le(multiset.sub_le_self _ _))), aa, 
-	cases (sup_mem: SM(S - y• count y S)), 
-		rw h_2 at h_3,
-		have: count y (with_y 0 S) = 0, simp,
-		have:= count_eq_zero.mp this,
-		simp[with_y] at this, aa,
-	simp[h_3],
-	cases lt_or_eq_of_le(bot_le: ⊥≤y), aa, rw ←h_4 at h_1, aa,
-}
-
-instance iwo_: is_well_order (multiset X) (<) := ⟨by{
-	have induction: ∀P: multiset X → Prop, (∀S, (∀T, T<S → P T) → P S) → ∀S, P S,
-		have AIX: ∀x, IX x := @AIX X _ _,			
-		intros,
-		let y := sup S,
-		let with_y := λn(s: multiset X), s - y• count y s + y•n,
-		have count_with_y: ∀z m J, count z (with_y m J) = if z=y then m else count z J,
-			intros,
-			cases em(z=y); simp[h, with_y],
-		have with_y_split: ∀Z, Z = with_y (count y Z) (with_y 0 Z), 
-			intro, ext, simp[count_with_y],
-			cases em(a_1=y); simp[h],
-		cases em(y=⊥) with y_ y'_,
-			rw(eq_repeat_bot_of_sup_bot y_),
-			generalize: count ⊥ S = n,
-			apply @nat.strong_induction_on(λn, P(⊥•n)),
-			simp,
-			intros n ih,
-			apply a,
-			intros,
-			have:= eq_repeat_bot_of_sup_bot(le_bot_iff.mp(calc sup T ≤ sup(⊥•n) : sup_le_sup_of_lt(by aa) ... = ⊥ : by simp)),
-			rw this at *,
-			apply ih _ (lt_of_repeat_lt a_1),
-		let R := λn, ∀T, under y T → P(with_y n T),
-		have AR: ∀n, R n,
-			intro,
-			apply @nat.strong_induction_on R, intros n ihR T,
-			apply AIX y, intros T Ty ih,
-			apply a, intros t t_Tn,
-			have ty_n: count y t ≤ n,
-				by_contra a,
-				simp at a,
-				rw(by simp : n = count y (with_y n T)) at a,
-				have JT := multiset_lt_def t_Tn,
-				have: y = (dif_set t (with_y n T)).sup id,
-					apply max_dif_is_maximum_dif_set,
-					constructor, apply ne_of_gt a,
-					intros z yz,
-					have Tz0: ∀ z>y, count z (with_y n T) = 0,
-						intros z yz,
-						simp[count_with_y, ne_of_gt yz],
-						apply count_eq_zero_of_not_mem,
-						by_contra,
-						apply lt_irrefl _(calc z ≤ sup T : le_sup a_1
-							... < y : Ty
-							... < z : yz),
-					cases em(count z t > 0), swap, rw Tz0, simp at h, aa,
-					by_contra,
-					have: id z ≤ _ := finset.le_sup(mem_dif_set a_1),
-					simp at this,
-					rw(Tz0 _ (lt_of_lt_of_le yz this)) at JT,
-					cases JT,
-				rw ←this at JT,
-				apply lt_irrefl _ (lt.trans a JT),
-			let t₀ := with_y 0 t,
-			rw(with_y_split t),
-			cases lt_or_eq_of_le ty_n with c c,
-				apply ihR(count y t), aa,
-				simp[with_y, under],
-				cases lt_or_eq_of_le(calc sup t ≤ sup(with_y n T) : sup_le_sup_of_lt t_Tn
-					... = sup _ ⊔ sup(y•n) : by simp
-					... ≤ sup T ⊔ y : sup_le_sup (sup_mono(subset_of_le(multiset.sub_le_self _ _))) sup_repeat_le
-					... ≤ y ⊔ y : sup_le_sup (le_of_lt Ty) (by refl)
-					... = y : by simp)
-				with t_lt_y t_eq_y,
-					calc sup(t - y• count y t) ≤ sup t : sup_mono(subset_of_le(multiset.sub_le_self t (y• count y t)))
-					... < y : t_lt_y,
-				cases lt_or_eq_of_le(sup_mono(subset_of_le(multiset.sub_le_self t (y• count y t)))),
-					calc sup(t - y• count y t) < sup t : h
-					... ≤ sup(with_y n T) : sup_le_sup_of_lt t_Tn
-					... = sup _ ⊔ sup(y•n) : by simp
-					... ≤ sup T ⊔ y : sup_le_sup (sup_mono(subset_of_le(multiset.sub_le_self _ _))) sup_repeat_le
-					... ≤ y ⊔ y : sup_le_sup (le_of_lt Ty) (by refl)
-					... = y : by simp,
-				cases (sup_mem: SM(t - y• count y t)),
-					rw h at h_1,
-					have: count y (with_y 0 t) = 0, simp,
-					have:= count_eq_zero.mp this,
-					simp[with_y,t_eq_y] at *, aa,
-				simp[h_1],
-				cases lt_or_eq_of_le(bot_le: ⊥≤y), aa, rw ←h_2 at y'_, aa,
-			rw c,
-			apply ih,
-			have difs: dif_set t₀ T = dif_set (with_y n t₀) (with_y n T),
-				have: count y T = 0,
-					apply count_eq_zero_of_not_mem,
-					by_contra a,
-					apply lt_irrefl _ (calc y ≤ sup T : le_sup a ... < y : Ty),
-				ext, constructor; intro m; simp at *; rw this at *; simp at *, aa,
-			have JT:= multiset_lt_def t_Tn,
-			have et: with_y _ t₀ = t := (with_y_split t).symm,
-			rw c at et,
-			rw et at difs,
-			rw ←difs at JT,
-			have ei'y: ¬ (dif_set t₀ T).sup id = y,
-				by_contra on'y,
-				cases em(dif_set t₀ T = ∅) with emp, simp[emp,on'y.symm] at *, rw c at JT, apply lt_irrefl _ JT,
-				have:= maximum_mem h,
-				rw[on'y,difs] at this,
-				simp at this, aa,
-			simp[has_lt.lt,less,preorder.lt,partial_order.lt,linear_order.lt,partial_order.lt._default,preorder.lt._default],
-			rw(dif_set_com : dif_set T t₀ = _),
-			simp[count_with_y,ei'y] at *,
-			constructor, right, aa,
-			constructor; by_contra f, simp[f] at *, apply not_lt_self_sub JT,
-			apply lt_irrefl _ (lt_trans (stupid f) JT),
-		rw(with_y_split S),
-		apply AR,
-		simp[with_y, under],
-		cases lt_or_eq_of_le(sup_mono(subset_of_le(multiset.sub_le_self _ _))), aa, 
-		cases (sup_mem: SM(S - y• count y S)),
-			rw h at h_1,
-			have: count y (with_y 0 S) = 0, simp,
-			have:= count_eq_zero.mp this,
-			simp[with_y] at this, aa,
-		simp[h_1],
-		cases lt_or_eq_of_le(bot_le: ⊥≤y), aa, rw ←h_2 at y'_, aa,
-	apply well_founded.intro,
-	apply induction,
-	intros,
-	constructor,aa
-}⟩
-
-open finsupp
-
-instance mo_ord_J[mo]: decidable_linear_order J := {
-	le := λi j, single i 1 ≤ single j 1,
-	le_trans := by finish,
-	le_refl := by finish,
-	le_antisymm := by{
-		intros a b a_1 a_2, dsimp at *,
-		have:= congr_arg (λm, (support m).1) (le_antisymm a_1 a_2),
-		simp[support_single_ne_zero] at this, aa
-	},
-	le_total := by{
-		intros, simp at *,
-		cases le_total (single a 1) (single b 1), left, aa, right, aa
-	},
-	decidable_le := by apply_instance,
-}
-#check 1
 
 instance endomonoid{t}: monoid(t → t) := {
 	one := id,
@@ -800,122 +28,554 @@ instance endomonoid{t}: monoid(t → t) := {
 	mul_one := function.comp.right_id,
 }
 
-theorem founded_iff_no_strictly_decreasing_seq{X}[partial_order X]: @well_founded X (<) ↔ ¬∃s: ℕ→X, ∀i j, i<j → s i > s j := by{
-	constructor; intro,
-		-- by_contra,
-		-- cases a_1 with s d,
-		-- let sℕ := s '' set.univ,
-		-- have: sℕ ≠ ∅, safe,
-		-- let x := a.min sℕ ‹sℕ ≠ ∅›,
-		-- rcases a.min_mem sℕ ‹sℕ ≠ ∅› with ⟨j, _, sj_x⟩,
-		-- have:= d j (j+1) (by constructor),
-		-- have:= a.not_lt_min sℕ ‹sℕ ≠ ∅› (by tidy : s(j+1) ∈ sℕ),
-		-- rw sj_x at *, aa,
-		sorry,
-	
+--option.cases_on has typing problems. 
+def option.maybe{A B}(no: B)(yes: A→B): option A → B
+| none := no
+| (some a) := yes a
+
+def ifoldl_help{S T}(f: ℕ→S→T→T): ℕ → list S → T → T
+| i [] r := r
+| i (x::s) r := ifoldl_help (i+1) s (f i x r)
+def list.ifoldl{S T}(f: ℕ→S→T→T) := ifoldl_help f 0
+
+def list.imap{S T}(f: ℕ→S→T)(s: list S) := (s.ifoldl(list.cons ∘₂ f) []).reverse
+
+universe U
+def list.mfilter_map{A B : Type U}{M}[monad M](f: A → M(option B)): list A → M(list B)
+| [] := pure[]
+| (a::s) := do
+	fa ← f a,
+	s' ← s.mfilter_map,
+	pure(fa.maybe s' ⟮b ↦ b::s'⟯)
+
+@[simp] def map₂_default{X Z}(d)(f: X → X → Z): list X → list X → list Z
+| [] [] := []
+--| s l := f ((s.nth 0).get_or_else d) ((l.nth 0).get_or_else d) :: map₂_default s.tail l.tail
+| [] (y::ys) := f d y :: map₂_default [] ys
+| (x::xs) [] := f x d :: map₂_default xs []
+| (x::xs) (y::ys) := f x y :: map₂_default xs ys
+
+def trim_tail{X}[decidable_eq X](x)(s: list X) := (s.reverse.drop_while(=x)).reverse
+
+--unique_pairs[xⱼ | j] = [(xᵢ,xⱼ) | i<j]
+def list.unique_pairs{T}: list T → list(T×T)
+| [] := []
+| (x::xs) := xs.map⟮y↦ (x,y)⟯ ++ xs.unique_pairs
+
+@[priority 0]instance to_string_of_repr{X}[has_repr X]: has_to_string X := ⟨repr⟩
+@[priority 0]meta instance format_of_repr{X}[has_repr X]: has_to_tactic_format X := ⟨has_to_tactic_format.to_tactic_format ∘ repr⟩
+
+/-- 
+`nat.mk_numeral n` embeds `n` as a numeral expression inside a type with 0, 1, and +.
+`type`: an expression representing the target type
+`has_zero`, `has_one`, `has_add`: expressions of the type `has_zero %%type`, etc. 
+ -/
+meta def nat.mk_numeral (type has_zero has_one has_add : expr) : ℕ → expr :=
+let z : expr := `(@has_zero.zero.{0} %%type %%has_zero),
+    o : expr := `(@has_one.one.{0} %%type %%has_one) in
+nat.binary_rec z
+  (λ b n e, if n = 0 then o else
+    if b then `(@bit1.{0} %%type %%has_one %%has_add %%e) 
+    else `(@bit0.{0} %%type %%has_add %%e))
+
+meta def int.mk_numeral (type has_zero has_one has_add has_neg : expr) : ℤ → expr
+| (int.of_nat n) := n.mk_numeral type has_zero has_one has_add 
+| -[1+n] := let ne := (n+1).mk_numeral type has_zero has_one has_add in 
+            `(@has_neg.neg.{0} %%type %%has_neg %%ne)
+
+meta def rat.mk_numeral (type has_zero has_one has_add has_neg has_div : expr) : ℚ → expr
+| ⟨num, denom, _, _⟩ := 
+  let nume := num.mk_numeral type has_zero has_one has_add has_neg in
+  if denom = 1 then nume else
+    let dene := denom.mk_numeral type has_zero has_one has_add in 
+    `(@has_div.div.{0} %%type %%has_div %%nume %%dene)
+
+meta def rat.reflect : ℚ → expr :=
+rat.mk_numeral `(ℚ) `((infer_instance : has_zero ℚ))
+         `((infer_instance : has_one ℚ))`((infer_instance : has_add ℚ))
+         `((infer_instance : has_neg ℚ)) `(infer_instance : has_div ℚ)
+
+section 
+local attribute [semireducible] reflected
+meta instance ℚ_has_reflect: has_reflect ℚ := rat.reflect
+end 
+
+-- infixr ` ∷ `:67 := (++)∘repr
+-- --set_option pp.all true
+-- def replace_1_: list char → string
+-- --| ('+'::' '::'-'::s) := "- "++ replace_minus s
+-- | [] := ""
+-- | (a::s) := match if a≠' ' then none else match s with
+-- 	| [] := none
+-- 	| (b::s) := if b≠'1' then none else match s with
+-- 		| [] := none
+-- 		| (c::s) := if c≠' ' then none else 
+-- 			have hint: s.sizeof < a.val+(1+s.sizeof), from by{simp[has_lt.lt,nat.lt], rw(_:nat.succ _=0+_), rw(_:1+_=nat.succ _), apply nat.add_le_add_right, tidy, rw nat.add_comm},
+-- 			some(' '∷ replace_1_ s)
+-- end end with
+-- | none := a ∷ replace_1_ s
+-- | some s := s
+
+
+--–Monomials are now represented by lists, which are thought to be zero extended. Trailing zeros are normalized away. 
+def monomial := list ℕ
+namespace monomial
+
+def deg(m: monomial) := list.sum m
+
+def variable_name: ℕ → string
+| 0 := "x" | 1 := "y" | 2 := "z"
+| n := (char.of_nat(121-n)).to_string
+
+def rise_digit(n: char) := ("⁰¹²³⁴⁵⁶⁷⁸⁹".to_list.nth n.to_string.to_nat).get_or_else '?'
+def rise_number(n: string) := (n.to_list.map rise_digit).as_string
+
+instance monomial.has_repr: has_repr monomial := ⟨ m ↦ m.ifoldl⟮j e ↦ ite(e=0) id (++ variable_name j ++ ite(e=1) "" (rise_number(repr e)))⟯ "" ⟩
+instance: has_one monomial := ⟨[]⟩
+instance: has_mul monomial := ⟨map₂_default 0 (+)⟩ --no need to trim
+instance: has_div monomial := ⟨trim_tail 0 ∘₂ map₂_default 0 ⟮x y ↦ x-y⟯⟩
+
+def gcd(n m : monomial): monomial := trim_tail 0 (list.map₂ min n m) --no need to extend
+def lcm(n m : monomial): monomial := map₂_default 0 max n m --no need to trim
+
+def dvd': monomial → monomial → bool
+| [] _ := tt
+| (n::ns) m := n ≤ (m.nth 0).get_or_else 0 ∧ dvd' ns m.tail
+def dvd := n m ↦ (dvd' n m : Prop)
+instance: has_dvd monomial := ⟨dvd⟩
+instance: decidable_rel dvd := by unfold dvd; apply_instance
+
+
+--–Orders should be admissible (unit least and multiplication monotonous). 
+class order := 
+(lt: monomial → monomial → Prop)
+(decidable: decidable_rel lt)
+
+def lex: order := {
+	lt := list.lex(<),
+	decidable := infer_instance,
 }
-
-structure strictly_increasing_maps(X Y)[partial_order X][partial_order Y] := (f: X→Y) (si: ∀x y, x<y → f x < f y)
-infixr ` ⤤ `:20 := strictly_increasing_maps
-
---def 𝓒{X Y}(x:X)(y:Y) := x
-
---instance{X Y}[partial_order X][partial_order Y]: has_coe_to_fun(X⤤Y) := ⟨λ_,X→Y, strictly_increasing_maps.f⟩
-
-def is_subsequence{A:Type}(s t : ℕ→A) := ∃j: ℕ→ℕ, (∀n m, n<m → j n < j m) ∧ s = t∘j
-infix ` ⊴ `:50 := is_subsequence
-variable{A:Type}
-
-@[refl] theorem subseq_refl(s: ℕ→A): s⊴s := ⟨id, by safe⟩
-@[trans] theorem subseq_trans(a b c : ℕ→A)(ab: a⊴b)(bc: b⊴c): a⊴c := by{
-	rcases ab with ⟨j,_⟩,
-	rcases bc with ⟨k,_⟩,
-	exact⟨k∘j, by safe⟩
+def deg_lex: order := {
+	lt := n m ↦ deg n < deg m ∨ (deg n = deg m ∧ list.lex(<) n m),
+	decidable := _ _↦ by apply or.decidable,
 }
+end monomial
 
-def build(next: list A → A): ℕ→A := λn, next(((λe, e++[next e]) ^n) [])
+@[reducible] private def mo := monomial.order
 
 
---An order is extensibly founded if each of its extensions is well founded. Presence of an increasing pair in every sequence is a technically easier formulation. 
-class extensibly_founded(X) extends partial_order X := (ef: ∀s: ℕ→X, ∃ i j, i<j ∧ s i ≤ s j)
+--–Polynomials (this ended up essentially reimplementing very basics of rbmap equivalently, because I didn't find rbmap early enough)
+--Reverse order to have the leading term first. 
+def poly.less[mo]{K}(x y : K×monomial) := monomial.order.lt y.snd x.snd
+def poly[mo](K)[ring K] := rbtree (K×monomial) poly.less
 
-/-Jos jokaiselle i olisi <∞ monta j>i s.e. si≤sj, niin voitaisiin rekursiivisesti valita jono, jossa mikään alkio ei ole suurempi kuin jokin edeltäjänsä, rr. Täten voidaan valita rekursiivisesti osajonoon vain sellaisia termejä, joita seuraa ∞ monta suurempaa termiä. 
-Ol. ∃s, ∀i, #{j>i | si≤sj} < ∞.
-	build(js ↦ ε\U{i>⊔js | ∃ j∈js: si≤sj} --∃, koska #U{...} < ∞)  contradicts ef
-Siis ∀s, ∃i, #{j>i | si≤sj} = ∞. Olk. gi ⊴ s|>i s.e. gij>si, jossa i saadaan valinnalla edellisestä. Muodostetaan jono (gⁱs)0 ja osoitetaan se kasvavaksi. 
---/
-theorem E_inc_subseq{X}[extensibly_founded X]: ∀s: ℕ→X, ∃ t⊴s, monotone t := sorry
+namespace poly
+--K ∈ Type 0 because otherwise combination with tactics gets problematic.
+variables{K: Type}[ring K][decidable_eq K][o:mo](P R : poly K)
 
-local attribute [instance, priority std.priority.default+1] prod.partial_order
+instance[mo]: has_lt monomial := ⟨monomial.order.lt⟩
+instance[mo]: has_le monomial := ⟨ n m ↦ ¬n>m ⟩
+instance decidable_lt[mo]: @decidable_rel monomial (<) := monomial.order.decidable
+instance decidable_le[mo]: @decidable_rel monomial (≤) := by apply_instance
+instance decidable_less: decidable_rel(@less o K) := _ _↦ by unfold less; apply_instance
 
-instance{X Y}[extensibly_founded X][extensibly_founded Y]: extensibly_founded(X×Y) := ⟨by{
-	sorry
-}⟩
+def coef(m) := ((P.find(0,m)).get_or_else(0,m)).fst
+--Value 0 should not be inserted, but rbtree lacks removal rutines. Since full simplification will rebuild a polynomial from scratch, extra zeros should not add up too badly.
+def update(m)(f: K→K): poly K := let k := f(coef P m) in P.insert(k,m)
 
-instance: has_dvd(J→₀ℕ) := ⟨λn m, ∀ j ∈ n.support, n j ≤ m j⟩
-instance lo_mo[mo]: linear_order monomi := {..dlo_mo}
+def monom[mo](m): poly K := rbtree_of[m]less
+instance[mo]: has_coe monomial (poly K) := ⟨ m↦ monom(1,m) ⟩
 
-instance iwo_mo[mo]: is_well_order monomi (<) := ⟨by{
-	--Järjestys laajentaa laajapohjustettua tulojärjestystä olettaen, että #J<∞. 
-	sorry
-}⟩
+--Let f' = (f; 0↦id). Then combine@₂f maps Σ pⱼ⬝mⱼ and Σ rⱼ⬝mⱼ to Σ f' pⱼ rⱼ ⬝ mⱼ (...assuming unsoundly that there's no explicit 0 coefficients...exact behavior depends on what the representation happens to be). 
+def combine(f: K→K→K): poly K := P.fold⟮p R' ↦ update R' p.snd (f p.fst)⟯ R
+def map_poly(f: K→K): poly K := combine P P _↦f
 
---set_option trace.class_instances true
-instance dfo_monomi[mo]: decidable_founded_order monomi := {
-	bot := 0,
-	bot_le := by safe,
-	..dlo_mo,
-	..iwo_mo
-}
+instance[mo]: has_zero(poly K) := ⟨rbtree_of[]less⟩
+instance[mo]: has_one(poly K) := ⟨monom(1,1)⟩
+instance[mo]: has_add(poly K) := ⟨combine @₂(+)⟩
+instance[mo]: has_neg(poly K) := ⟨map_poly @₁ k↦-k⟩
+instance[mo]: has_sub(poly K) := ⟨ P R ↦ P + -R ⟩
+instance[mo]: has_mul(poly K) := ⟨ P↦ fold⟮m↦ P.fold⟮n↦ (+monom(m⬝n))⟯⟯ @₁0 ⟩
+instance[mo]: has_scalar K (poly K) := ⟨ k↦ map_poly @₁(⬝k) ⟩
+instance[mo]: has_pow(poly K) ℕ := ⟨ P n ↦ (list.repeat P n).foldl(⬝)1 ⟩
 
-def polyprec[mo](P R : K:[J]) := P.support.1 < R.support.1
-local notation ` ≺ `:50 := polyprec
+instance[mo][has_repr K]: has_repr(poly K) := ⟨ P↦ match P.to_list.filter⟮p:K×_ ↦ p.fst ≠ 0⟯ with
+	| [] := "0"
+	| (m::ms) := ms.foldl⟮s p ↦ s ++" + "++ repr p.fst ++" "++ repr p.snd⟯ (repr m.fst ++" "++ repr m.snd)
+end⟩
 
-instance[mo]: has_well_founded(K:[J]) := ⟨(≺), by{
-	have: polyprec = inv_image (<) (λ(P: K:[J]), P.support.1) := rfl,
-	rw this,
-	apply inv_image.wf,
-	apply iwo_.wf,
-}⟩
+def lead_term := (P.fold⟮p:K×_ ↦ option.maybe (if p.fst = 0 then none else some p) some⟯ none).maybe (0,1) id
+def lead_coef := P.lead_term.fst
+def lead_mono := P.lead_term.snd
 
---Simplify the top term. Note: This may not simplify P at all if it is not the case that P→0. 
-def simplify_step[mo](B: list(K:[J]))(P: K:[J]) := 
-	let p := P.max_mono, b := B.map mv_polynomial.max_coef in
-	match B.filter(λb:K:[J], b.max_mono ∣ p) with
-	| [] := P
-	| (b::_) := P - C(P.max_coef / b.max_coef) * b
+def is0 := lead_coef P = 0
+instance decidable_is0: decidable P.is0 := by unfold is0; apply_instance
+
+def is_const := lead_mono P = 1
+instance decidable_is_const: decidable P.is_const := by unfold is_const; apply_instance
+
+--This is ridiculous!
+instance rbnode_eq{X}[eqX: decidable_eq X]: decidable_eq(rbnode X)
+| rbnode.leaf rbnode.leaf := is_true rfl
+| (rbnode.red_node l1 v1 r1) (rbnode.red_node l2 v2 r2) :=
+	match eqX v1 v2 with 
+	| is_false v := is_false(by{by_contra a, injection a, contradiction})
+	| is_true v := 
+		match rbnode_eq l1 l2 with
+		| is_false l := is_false(by{by_contra a, injection a, contradiction})
+		| is_true l := 
+			match rbnode_eq r1 r2 with
+			| is_false r := is_false(by{by_contra a, injection a, contradiction})
+			| is_true r := is_true(by rw[l,v,r])
+			end
+		end
+	end
+| (rbnode.black_node l1 v1 r1) (rbnode.black_node l2 v2 r2) := 
+	match eqX v1 v2 with 
+	| is_false v := is_false(by{by_contra a, injection a, contradiction})
+	| is_true v := 
+		match rbnode_eq l1 l2 with
+		| is_false l := is_false(by{by_contra a, injection a, contradiction})
+		| is_true l := 
+			match rbnode_eq r1 r2 with
+			| is_false r := is_false(by{by_contra a, injection a, contradiction})
+			| is_true r := is_true(by rw[l,v,r])
+			end
+		end
+	end
+| rbnode.leaf (rbnode.red_node l1 v1 r1) := is_false(by by_contra; injection a)
+| rbnode.leaf (rbnode.black_node l1 v1 r1) := is_false(by by_contra; injection a)
+| (rbnode.red_node l1 v1 r1) rbnode.leaf := is_false(by by_contra; injection a)
+| (rbnode.red_node l1 v1 r1) (rbnode.black_node l2 v2 r2) := is_false(by by_contra; injection a)
+| (rbnode.black_node l1 v1 r1) rbnode.leaf := is_false(by by_contra; injection a)
+| (rbnode.black_node l1 v1 r1) (rbnode.red_node l2 v2 r2) := is_false(by by_contra; injection a)
+
+instance[mo]: decidable_eq(poly K) := by apply_instance
+instance[mo]: inhabited(poly K) := ⟨0⟩
+
+variable [has_repr K]
+def see{X Y}[has_repr X][has_repr Y](m:Y)(x:X) := _root_.trace (repr m ++ repr x) x
+
+
+private def proof[mo](K)[ring K] := list(poly K)
+def poly_mem[mo](K)[ring K] := poly K × proof K
+def polys[mo](K)[ring K] := list(poly_mem K)
+
+instance hrp[mo]: has_repr(proof K) := by unfold proof; apply_instance--TODO remove after debug
+
+def poly_mem.is0[mo](P: poly_mem K) := is0 P.fst
+instance[mo](P: poly_mem K): decidable P.is0 := by unfold poly_mem.is0; apply_instance
+instance evvk[mo]: inhabited(poly_mem K) := ⟨(0,[])⟩
+
+--Construct trivial proof by cloning a proof from non-empty list. 
+def proof_triv[mo](B: polys K. assumption): proof K := B.head.snd.map⟮_↦0⟯
+def is_triv[mo]: proof K → bool
+| [] := tt
+| (p::ps) := is0 p ∧ is_triv ps
+def proof_add[mo](p₁ p₂ : proof K)(f: poly K → poly K) := p₁.map₂(+) (p₂.map f)
+
+--Compute the S-polynomial of monic polynomials with membership proof. 
+def monicS[mo]: poly_mem K → poly_mem K → poly_mem K | (P,pP) (R,pR) := 
+	let p:= lead_mono P, r:= lead_mono R, m:= p.lcm r, mp:= monom((1:K), m/p), mr:= monom((1:K), m/r) 
+	in (P⬝mp - R⬝mr, proof_add (pP.map(⬝mp)) pR(⬝(-mr)))
+
+
+--Accumulates proof to show that if P→R then R - P ∈ ⟨B⟩. 
+meta def simplify_leading_loop[mo](B: polys K): poly_mem K → poly_mem K |(P, proof) :=
+	let p := P.lead_mono in match B.filter((∣p)∘lead_mono∘fst) with
+		| [] := (P, proof)
+		| (b,prf)::_ := let c := -monom(lead_coef P, p / lead_mono b) in simplify_leading_loop(P + b⬝c, proof_add proof prf(⬝c))
+end
+--B must be a non-empty list of monic (and ≠0) polynomials.
+meta def simplify_leading[mo](B: polys K)(P: poly_mem K): poly_mem K := 
+	match B.filter(is_const ∘ fst) with
+	| (_,prf)::_ := (0, proof_add P.snd prf(⬝(-P.fst)))
+	| _ := simplify_leading_loop B P
 end
 
---How to best implement: meta or with proof?
-def simplify[mo](B: list(K:[J]))(P: K:[J]): K:[J] := sorry
+meta def simplify_loop[mo](B): poly K → poly_mem K → poly_mem K | R P :=
+	if P.is0 then (R, P.snd) else let (P,prf) := simplify_leading B P, p := monom P.lead_term in simplify_loop (R+p) (P-p, prf)
+--Return fully simplified R←P and proof that R - P ∈ ⟨B⟩. Input P comes without membership proof, because simplification should be applicable to arbitrary polynomials. 
+meta def simplify[mo](B: polys K)(P) := simplify_loop B 0 (P, proof_triv)
 
---1. simplify is a non-trivially terminating loop
---2. the S-polynomial generation surrounds a call to simplify
---3. the main loop is non-trivially terminating
---⟹ correctness of S-step can't be proven without simplify, ...right?
 
-private meta def go[mo]: list(K:[J]) → list(K:[J] × K:[J]) → list(K:[J])
+variable[field K]
+--scale_monic 0 := 0
+def scale_monic[mo]: poly_mem K → poly_mem K | (P,prf) := let c := P.lead_coef ⁻¹ in (c•P, prf.map((•)c))
+
+
+meta def simplify_basis_loop[mo](simp: polys K → poly_mem K → poly_mem K): ℕ → polys K → polys K
+| 0 B := B
+| l [] := sorry -- l ≤ B.length
+| l (P::B) := let 
+	P' := simp B P,
+	B' := ite P'.is0 B (B++[scale_monic P'])
+in simplify_basis_loop(if is_triv(P.snd.map₂⟮x y ↦ x-y⟯ P'.snd) then l-1 else B'.length) B'
+
+--For each element of B, if S simplifies the leading term, then simplify additionally with other elements of the basis.
+meta def simplify_basis_by[mo](S: poly_mem K)(B: polys K) := simplify_basis_loop⟮B P ↦ let P' := simplify_leading [S] P in if is_triv P'.snd then P else simplify_leading B P'⟯ B.length B
+
+--Interreduce B. 
+meta def simplify_basis[mo](B: polys K) := simplify_basis_loop(simplify_loop @₁0) B.length B
+
+
+--main loop
+private meta def go[mo]: polys K → list(poly_mem K × poly_mem K) → polys K
 | G [] := G
-| G (p::ps) := let s := scale_monic(simplify G (monicS p)) in
-	if s=0 then go G ps else
-		go (s::G) (ps ++ G.map(λP, (P,s)))
+| G ((p₁,p₂)::ps) := let S := scale_monic(simplify_leading G (monicS p₁ p₂))
+	in if S.is0 then go G ps else let G := simplify_basis_by S G in go (S::G) (ps ++ G.map⟮P↦ (P,S)⟯)
+
+meta def «Gröbner basis of»[mo](B: list(poly K)) := let B := B.filter(not∘is0), B1 := B.imap⟮i b ↦ scale_monic(b, (B.map⟮_↦(0: poly K)⟯).update_nth i 1)⟯ in simplify_basis(go B1 B1.unique_pairs)
+notation `Gröbner_basis_of` := «Gröbner basis of»
+--Lean's letter recognition is broken! It is not just an implementation mistake, but it is even specified in an adhoc way – see https://leanprover.github.io/reference/lexical_structure.html#identifiers – which is incompatible with Unicode. Not only a huge number of letters is ignored but also some non-letters included (though correctly called just letterlike):
+def ℡⅋℀ := "Telephone sign ǝʇ “account” are letters only in Lean!"
+--Inclusion of non-letters means that Lean can't be said to support a subset of Unicode. FYI: Unicode is about semantics of code points (numbers). UTF-8 is a character encoding (mapping between bytes and numbers) that Lean does use. Observations here hold at the time of writing and hopefully not in the future.
 
 
-meta def Gr'LeanHasLetterBug'bner_basis_of[mo](B: list(K:[J])) := let B1 := B.map scale_monic in go B1 B1.unique_pairs end
-notation `Gröbner_basis_of` := Gr'LeanHasLetterBug'bner_basis_of
+--Tästä voisi johtaa tyyliin ringa-taktiikan. Sievennetään kaikkia ... hmm, miten sievennyskelpoiset lausekkeet määrätään? Kertoimien tulee olla kunnasta, mutta muuttujia saa käsitellä vain rengasoperaatioilla. Teoreettisesti nättiä olisi yleistää hieman ja ratkaista renkaiden ehdolliset sanaongelmat, mutta sehän edellyttäisi paljon lisää koodausta! 
+--Sitten pitää ratkaista, miten termien triviaali sievennys kuten x+y-x=y hoidetaan. Koska tulos tiedetään aina, voidaan turvallisesti turvautua ring-taktiikkaan. 
+--Luetaan tavoitetta kunnes vastaan tulee +,⬝,- (tärkeää on, että löydetään maksimaalinen termi sievennettäväksi—tämän pitäisi riittää siihen, koska tietenkään päälioperaatio ei tällöin voi olla jokin sellainen, jota ei osata käsitellä). Huom. - voi esiintyä sekä unaarisena että binäärisenä. Seuraavaksi tarkistetaan, että alitermi on kuntatyyppiä...mutta tämä rajoittaa käytettävyyttä melko merkittävästi. Teoriassa voisi vaatia, että tyyppi on vaihdannainen rengas ja K-moduli jonkin kunnan K suhteen, ja K:lta vaaditaan lisäksi päätettävä yhtyvyys. Jotta tästä teoriasta tulee käytäntöä, lienee vaadittava, että käyttäjä syöttää kunnan (ℚ voi olla oletusarvo).
 
-#exit
-def spans{R}[comm_ring R](s: list R) := span(set_of(flip list.mem s))
+meta def 𝔼(pre) := to_expr pre tt ff
+--meta def childs(e: expr) := (e.mfoldl⟮c s ↦ [list.cons s c]⟯ []).head
+meta def childs: expr → list expr
+| (expr.app f p) := [f,p]
+| (expr.pi _ _ S T) := [S,T]
+| (expr.elet _ t v b) := [t,v,b] --Does this work with infer_type?
+| (expr.macro _ cs) := cs
+| _ := []
 
-example: (X 1 ² - X 2 ² : mv_polynomial ℕ K) ∈ spans[X 1 ² * X 2 - X 1 ², (X 2 ² * X 1 - X 2 ² : K:[J])] := by{
-	let A: K:[J] := X 1 ² * X 2 - X 1 ²,
-	let B: K:[J] := X 2 ² * X 1 - X 2 ²,
-	let C: K:[J] := (1 + X 1)*B - (1 + X 2)*A,
-	have: C = X 1 ² - X 2 ²,
-		change _*(_-_) - _*(_-_) = _,
-		simp,
-		ring,
-	change _ ∈ spans[A,B],
-	rw ←this,
-	sorry
-}
+notation `~`x := pure x
+notation `ᵘᵖ ` m := monad_lift m
+
+
+@[reducible] meta def ST := state_t (list expr) tactic
+--Run reaction if state is not [].
+meta def if_not_found(reaction: ST unit): ST unit := do s ← state_t.get, when(s=[]) reaction
+
+meta def fbs_loop{T}(t)(test: (expr → ST T) → expr → ST T)(atoms: rb_set expr): bool → expr → ST unit | layer's_top e :=
+when(¬ atoms.contains e) (test⟮x ↦ t<$
+	if x≠e then fbs_loop ff x
+	else (childs x).mmap'(if_not_found ∘ fbs_loop tt)
+⟯ e >> if_not_found(when layer's_top (test⟮e' ↦ when(e≠e') (state_t.put[e]) $>t⟯ e $>())))
+--Finds some minimal subterm accepted by test while treating terms in the set atoms as such. Parameter t is just an inhabitance proof.
+meta def find_bottom_simplifiable{T}(t:T)(test)(atoms): expr → tactic(option expr) 
+| e := prod.fst <$> (do
+	fbs_loop t test atoms tt e,
+	g ← state_t.get,
+	~ g.nth 0
+).run[]
+
+
+meta def prepare_loop{T}(var: ℕ→T)(test: (expr → ST T) → expr → ST T): expr → ST T | e :=
+test⟮x ↦ if x≠e then prepare_loop x else do
+	vs ← state_t.get,
+	let i := vs.index_of x,
+	when(i = vs.length) (state_t.put(vs++[x])) $> var i
+⟯e
+--Transform (top layer of) e to its T-representation according to test, with alien subterms replaced by variables generated from var with syntactic equality preserved. Second component of the return value is list of the replaced alien terms.
+meta def prepare{T}(var: ℕ→T)(test)(e) := (prepare_loop var test e).run[]
+--Like mapping the above, but naming of the alien terms is consistent.
+meta def prepares{T}(var: ℕ → T)(test)(es: list expr) := (es.mmap(prepare_loop var test)).run[]
+
+
+meta def simplify_by_loop{T}(var: ℕ→T)(test: (expr → ST T) → expr → ST T)(simp: expr → T → tactic expr): rb_set expr → tactic unit | simplified := do
+	e ← target,
+	x ← find_bottom_simplifiable (var 0) test simplified e,
+	x.maybe(~())⟮x ↦ do
+		(x',g) ← prepare var test x,
+		proof ← simp x x',
+		rewrite_target proof,
+		`(%%_ = %%s) ← infer_type proof,
+		simplify_by_loop(simplified.insert s)⟯
+
+--Warning: in practise this interface turned out to behave ugly! This is a simplifier skeleton whose advantage over simp is that pattern matching and rule selection can be done programmatically. (For example simp could often do nothing with a Gröbner basis represented as simplifying equations, because non-syntactic pattern matching is needed to use them.) This functions like simp only [...]. The actual (single step) simplifier is given as a parameter. Its operation is extended by searching the proof target for simplifiable terms and calling the simplifier for all of these bottom up.
+--Parameters
+--T: an auxiliarity term representation that the simplifier may choose as it likes.
+--var: a stream of distinct variables.
+--test recursor ∈ expr → a_monad T : transforms a top operation of an input term into T-representation calling recursor for the childs, or for the whole term if it is alien. See test_poly for an example.
+--simp: from original expression E and its T-representation produce a proof that E = simplified E. Failed: Variable var i should be represented by a metavariable whose name ends with mk_numeral i, (or var 0, ..., var n may be represented by quantifying ∀x₀...∀xₙ ???).
+meta def simplify_by{T}(var: ℕ→T)(test)(simp) := simplify_by_loop var test simp mk_rb_set
+--Notes: Examining term structure and mapping it to T was combined into test. Original term is given to simp, because T-representation may be lossy. However if orig. rep. is needed (Gröbner bases avoid it by using ring), examination of it usually repeats. It even turned out that due to consistent alien term naming the second parameter of simp is practically useless. Currently test can work in ST, though safer would be to require polymorphicity over monad transformer on top of tactic. The tedious part (in addition to the core simplification in T) is producing the proof term in simp. Could this be simplified in a suitable monad?
+
+
+meta def test_instance(i) := (𝔼 i >>= mk_instance) $> tt <|> ~ff
+
+
+meta def test_poly[mo][reflected K](r: expr → ST(poly K))(e: expr): ST(poly K) := match e with
+| `(%%x ⬝ %%y) := (⬝) <$> r x <*> r y
+| `(%%x + %%y) := (+) <$> r x <*> r y
+| `(%%x - %%y) := ⟮x y ↦ x-y⟯ <$> r x <*> r y
+| `(- %%x) := ⟮x ↦ -x⟯ <$> r x
+| `(%%x ^ %%n) := do
+	N ←ᵘᵖ infer_type n,
+	if N ≠ `(ℕ) ∨ n.has_var ∨ n.has_local then r e
+	else do n ←ᵘᵖ eval_expr ℕ n, (^n) <$> r x
+| e := do
+	E ←ᵘᵖ infer_type e,
+	if E ≠ reflect K ∨ e.has_var ∨ e.has_local then r e
+	else do k ←ᵘᵖ eval_expr K e, ~monom(k,[])
+end
+
+meta def test_poly_typed[mo][reflected K](M: option expr)(r: expr → ST(poly K))(e): ST(poly K) := do
+	E ←ᵘᵖ infer_type e,
+	ok ← match M with some M := ~(E=M : bool)
+		| _ :=ᵘᵖ band <$> test_instance``(ring %%E) <*> test_instance``(module %%(reflect K) %%E) end,
+	(ite ok test_poly id) r e
+
+
+--X' i is the iᵗʰ variable "Xᵢ".
+def X'[mo](i:ℕ): poly K := monom(1, ((list.cons 0)^i) [1])
+
+
+meta def represent_mono[mo](r: has_reflect K)(M:expr)(vs: list expr)(m: monomial): tactic expr :=
+	m.ifoldl ⟮x p e ↦ if p=0 then e else do e←e, 𝔼``(%%e ⬝ %%(vs.nth x).iget ^ %%(reflect p))⟯ (𝔼``(1:%%M))
+
+meta def represent_poly[mo][r: has_reflect K](M:expr)(vs: list expr)(P: poly K): tactic expr :=
+	P.fold ⟮m e ↦ let c:= m.fst in if c=0 then e else do e←e, mono ← represent_mono r M vs m.snd, 𝔼``(%%e + %%(reflect c)⬝%%mono)⟯ (𝔼``(0:%%M))
+--TODO Use module product • to multiply mono by c. Problem is that then ring doesn't work!
+
+
+meta def local_equations_of_type(M) := do
+	ls ← local_context,
+	ls.mfilter⟮a ↦ do b ← infer_type a, match b with `(%%x = %%y) := do Y ← infer_type y, ~Y=M | _:=~ff end⟯
+
+
+--Return a proof of goal found by the given tactic solve.
+meta def prove_by(solve: tactic unit)(goal: tactic expr) := do
+	n ← get_unused_name,
+	goal >>= assert n,
+	solve,
+	proof ← get_local n,
+	--clear proof, --TODO How to clean the local context while keeping proof usable?
+	~proof
+
+namespace proof_building_blocks
+lemma mul_sub_is_0{M}[ring M][module K M]{x y O : M}(c: M)(o0: O=0)(h: x=y): O - c⬝(x-y) = 0 := by simp[*]
+
+lemma combines{M}[add_comm_group M][module K M]{P R O : M}(pr: P-R = O)(o0: O = 0): P = R := by rw(by simp : P = P-R + R);simp[*]
+
+end proof_building_blocks
+open proof_building_blocks
+
+
+--Compute a Gröbner basis from polynomial equations E and return a reducer suitable for simplify_by that uses the computed basis.
+meta def verifying_reducer[mo][reflected K][r: has_reflect K](M)(E: list expr): tactic(expr → poly K → tactic expr) := do
+	let test: (expr → ST(poly K)) → _ := test_poly_typed(option.some M),
+	be ← E.mmap⟮p ↦ do e ← infer_type p, match e with `(%%x = %%y) := 𝔼``(%%x - %%y) | _:=sorry end⟯,
+	((B: list(poly K)), vs) ← prepares X' test be,
+	let G := Gröbner_basis_of B,
+~ pe _ ↦ do	
+	--TODO There should be nicer way to keep track of alien subterms. Either variables in polynomials should have arbitrary names (ideal solution) or everything should work inside ST.
+	(P, vs) ← (prepare_loop X' test pe).run vs,
+	let (R, coef) := simplify G P,
+	--R = P + coef•(fⱼ - gⱼ)ⱼ
+	--P - R  =ʳⁱⁿᵍ=  -coef•(fⱼ - gⱼ)ⱼ  = “coef•0” = 0  ⟹ P=R
+	re ← represent_poly M vs R,
+	ce ← coef.mmap(represent_poly M vs),
+	K0is0 ← 𝔼``(rfl : (0:%%(reflect K)) = 0),
+	step2 ← (ce.zip E).mfoldl ⟮prf cb ↦ 𝔼``(@mul_sub_is_0
+		%%(reflect K) infer_instance infer_instance infer_instance infer_instance 
+		%%M infer_instance infer_instance 
+		_ _ _ %%cb.fst %%prf %%cb.snd)⟯ K0is0,
+	`(%%ce_be = %%_) ← infer_type step2,
+	ring_step ← prove_by`[{ring}] (𝔼``(%%pe - %%re = %%ce_be)),
+	𝔼``(@combines 
+		%%(reflect K) infer_instance infer_instance infer_instance infer_instance 
+		%%M infer_instance infer_instance 
+		_ _ _ %%ring_step %%step2)
+
+
+meta def exactℚ := `[exact ℚ]
+
+meta def ringa(K:Type. exactℚ)[reflected K][has_reflect K][field K][decidable_eq K][has_repr K/-debug-/][mo]: tactic unit := do
+	t ← target,
+	--"find_top_simplifiable" would be more expected behavior...if it existed
+	e ← find_bottom_simplifiable (0: poly K) (test_poly_typed none) mk_rb_set t,
+	if e=none then fail"nothing to simplify in target" else do
+	M ← infer_type e.iget,
+	B ← local_equations_of_type M,
+	if B=[] then `[ring] else do --Do not fail to preserve composability.
+	reducer ← verifying_reducer M B,
+	simplify_by (X': ℕ → poly K) (test_poly_typed(some M)) reducer,
+	`[try{ring}]
+
+
+#check Gröbner_basis_of
+--Test cases
+instance use_this_order := monomial.deg_lex
+variables{v x y z : ℚ}{f: ℚ→ℚ}
+
+--These delegate to ring tactic
+example: (x+y)⬝(x-y) = x² - y² := by ringa
+example: f(2⬝x) = f(x+x) := by ringa
+--These don't
+example(_:v=z): (x+y)⬝(x-y) = x² - y² := by ringa
+example(_:v=z): f(2⬝x) = f(x+x) := by ringa
+
+--Core functionality tests
+example(_: x+y = z)(_: x² + y² = z²): x⬝y = 0 := by ringa
+example(_: x⬝y² = x+y)(_: x²⬝y = x² + y²): y^5 = (2⬝x-1)⬝(2⬝y-1)/2 - 1/2 := by ringa
+example(_: x⬝y² = x+y)(_: x²⬝y = x+1): y = x² := by ringa
+example(_: z⬝x=y)(_: y=x²)(_: v²=2): x⬝(2⬝z-x-x) = 0 := by ringa
+example(_: x²⬝y = x²)(_: x⬝y² = y²): (x+y)⬝(x-y) + x² = x^3 := by ringa
+
+--Iteration tests
+example(_: x=y): x⬝f(2⬝x² - y²) - y⬝f(x⬝y) = 0 := by ringa
+example(_: x=y): x⬝f(x-y) - y⬝f(x-x) = 0 := by ringa
+example(_: x=y+1): (x-1)⬝f(2⬝x-1) - y⬝f(x² - y²) = 0 := by ringa
+example(_: x²+y² = z²)(_: x^3 + y^3 = z^3)(_: x⬝y = 1): f(x + y + f(2/3)) = f(f(z²) - 2⬝z) := by ringa
+
+--In algebras over ℚ
+open polynomial
+example{P: polynomial ℚ}(_: X² - X - 1 = (0: polynomial ℚ))(_: P = 1-X): P² = P+1 := by ringa
+
+
+--Is it worth to handle the situation of inconsistent axioms?
+example(_: x²+3⬝x+1 = 0)(_: y²+3⬝y+1 = 0)(_: x^5 + y^5 = 0): x-y = 1 := by ringa
+#check ringa
+--∛2̅+̅√̅5̅ + ∛2̅-̅√̅5̅ = 1
+--example(_: x²=5)(_: y^3 = 2+x)(_: z^3 = 2-x): y+z = 1 := by ringa
+
+end poly
+open poly
+
+instance{K:Type}[field K][decidable_eq K][has_repr K][mo]: has_repr(poly_mem K) := 
+--by unfold poly_mem; apply_instance
+⟨ x ↦ repr x.fst ⟩
+instance{K:Type}[field K][decidable_eq K][has_repr K][mo]: has_repr(polys K) := by unfold polys; apply_instance
+
+instance use_this := monomial.deg_lex
+def lm(m: list ℕ): poly ℚ := monom(1,m)
+
+def a := lm[2] +3⬝lm[1]+lm[]
+def b := lm[0,2] +3⬝lm[0,1]+lm[]
+def c := lm[5] + lm[0,5]
+#eval simplify(Gröbner_basis_of[a,b]) c
+--#eval Gröbner_basis_of[a,b,c] --Time out just because the algorithm is so slow!
+
+def α := lm[0,0,2] + lm[0,2] - lm[2]
+def β := lm[0,0,3] + lm[0,3] - lm[3]
+def γ := lm[0,1,1] - 1
+#eval (Gröbner_basis_of[α,β,γ])
+#eval simplify(Gröbner_basis_of[α,β,γ]) (lm[2])
+
+def P := lm[2,1] + ((1:ℚ)/2)•lm[2]
+def R := lm[1,2] + lm[0,2]
+def S := -lm[2,2] + lm[1,1] + lm[2]
+#eval (Gröbner_basis_of[P,R])
+#eval simplify (Gröbner_basis_of[P,R]) (S²)
+
+def B := [lm [3] -1, lm[2]+lm[1,1], lm[2]+lm[1,0,1]+lm[0,0,2]]
+#eval B
+#eval Gröbner_basis_of B
+#eval P²⬝R
+#eval Gröbner_basis_of$ [lm [3] -1, lm[2]+lm[1,1], lm[2]+lm[1,0,1]+lm[0,0,2], lm [0,3] -1, lm[0,2]+lm[0,1,1]+lm[0,0,2], lm [0,0,3] -1].map(⬝1)
+#eval Gröbner_basis_of[lm [3] -1, lm[2]+lm[1,1]+lm[0,2], lm[2]+lm[1,0,1]+lm[0,0,2], lm [0,3] -1, lm[0,2]+lm[0,1,1]+lm[0,0,2], lm [0,0,3] -1]
+#eval Gröbner_basis_of(B++[P²⬝R])
+--#eval Gröbner_basis_of(P²⬝R::B)
+
+#eval (lm[] + 0).lead_coef
+#eval (2⬝lm[4,2] + lm[3,4])².fold((++)∘repr) ""
+#eval (2⬝lm[4,2] + lm[3,4])².lead_mono
+#eval (P + 3⬝P² + P²)²

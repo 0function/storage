@@ -1,0 +1,2151 @@
+#LyX 2.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 508
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass beamer
+\begin_preamble
+\def\unq@#1=00#2#3#4#5#6&#7&#8&{\csname#4#5\endcsname#6&#7#1&#8&}
+\def\def@#1#2#3{\expandafter\def\csname#1#2\endcsname#3}
+\def\?#1#2#3{\def@#1#2{##1&##2&##3&{\unq@##1&#3&}}}
+\?10{#2\text{-}&#3}
+\?23{#2\#&#3}
+\?25{#2\%&#3}
+\?3D{#2=&#3}
+\?5B{#2[&#3}
+\?5D{#2]&#3}
+\?7B{&#2&#3}
+\?7D{#3{#2}}
+\?C4{#2\"A&#3}
+\?D6{#2\"O&#3}
+\?E4{#2\"a&#3}
+\?F6{#2\"o&#3}
+\def@00{&#1&&{#1}}
+\def@24{#1 #2&#3&{\expandafter\rec@\csname#1\endcsname#2&#3&}}
+\def\rec@#1#2&#3&{\unq@#2&#3#1&}
+\def\label@in@display#1{\tag*{{\large$\scriptstyle(\unq@#1 =000000&&&)$}}\gdef\df@label{#1}}
+
+\delimiterfactor=547
+\delimitershortfall=99pt
+\let\oldleft\left
+\let\oldright\right 
+\def\left{\mathopen{}\mathclose\bgroup\oldleft}
+\def\right{\aftergroup\egroup\oldright}
+
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[mathcal]{euscript}
+%Kiva sans-fontti, muttei asennettu :(
+%\usepackage{arev}
+
+%Tulosta kaavat Euler-fontilla.
+%\usepackage{mathpple}
+%\usefonttheme[onlymath]{serif}
+\end_preamble
+\use_default_options true
+\begin_modules
+theorems-std
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "times" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing other 0.8
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification false
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #004000
+\end_index
+\leftmargin 2cm
+\topmargin 1cm
+\rightmargin 2cm
+\bottommargin 3cm
+\secnumdepth 3
+\tocdepth 2
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+global
+\backslash
+let 
+\backslash
+oldquad
+\backslash
+quad
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+global
+\backslash
+let 
+\backslash
+oldqquad
+\backslash
+qquad
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset FormulaMacro
+\newcommand{\s}{\ }
+{ }
+\end_inset
+
+
+\begin_inset FormulaMacro
+\newcommand{\quad}{\oldquad}
+{     }
+\end_inset
+
+
+\begin_inset FormulaMacro
+\newcommand{\qquad}{\oldqquad}
+{          }
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset FormulaMacro
+\newcommand{\makeop}[1]{\operatorname{#1}}
+{\text{ #1 }}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset FormulaMacro
+\newcommand{\makelim}[2]{\operatorname*{#1}\limits _{#2}}
+{\text{ #1}\limits _{#2}}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset FormulaMacro
+\newcommand{\seq}[1]{\vec{#1} }
+{\overset{→}{#1}}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset FormulaMacro
+\newcommand{\param}[1][\seq x]{\lambda#1. }
+{#1\mapsto}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset FormulaMacro
+\newcommand{\set}[2]{\left\{  #1\,\middle|\,#2\right\}  }
+{\left\{ #1\Big|#2\right\} }
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset FormulaMacro
+\newcommand{\url}[1]{\text{\href{#1}{#1}}}
+{{\color{blue}#1}}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Title
+Simplification modulo equational axioms
+\begin_inset Newline newline
+\end_inset
+
+using Gröbner-bases
+\end_layout
+
+\begin_layout Author
+Visa Nummelin
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+The problem to solve
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Goal: Make tactic like 
+\emph on
+ring
+\emph default
+ which takes local equations into account
+\end_layout
+
+\begin_layout Itemize
+E.g.
+ prove 
+\begin_inset Formula $xy=0$
+\end_inset
+
+ given that 
+\begin_inset Formula $x+y=z$
+\end_inset
+
+ and 
+\begin_inset Formula $x^{2}+y^{2}=z^{2}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+Normal forms
+\color none
+: as with 
+\emph on
+ring
+\emph default
+—like one writes down a polynomial—modulo axioms
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+Handling of assumptions: Gröbner-basis will allow to find the normal form
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+Terms are polynomials whose indeterminates are the variables in the problem
+ (e.g.
+ 
+\begin_inset Formula $x,y,z$
+\end_inset
+
+ above)
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Formulation by ideals
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Definitions
+Let 
+\begin_inset Formula $R$
+\end_inset
+
+ be a ring.
+ An ideal 
+\begin_inset Formula $J$
+\end_inset
+
+ of 
+\begin_inset Formula $R$
+\end_inset
+
+ is a subgroup of 
+\begin_inset Formula $\left(R,+\right)$
+\end_inset
+
+ closed under multiplication by elements of 
+\begin_inset Formula $R$
+\end_inset
+
+.
+ In other words, non-empty 
+\begin_inset Formula $J\subseteq R$
+\end_inset
+
+ is an ideal iff 
+\begin_inset Formula $RJ+JR=J$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Definitions
+An ideal 
+\begin_inset Formula $\langle S\rangle$
+\end_inset
+
+ generated by 
+\begin_inset Formula $S\subseteq R$
+\end_inset
+
+ is the smallest one containing 
+\begin_inset Formula $S$
+\end_inset
+
+.
+ Explicitly when 
+\begin_inset Formula $R$
+\end_inset
+
+ commutes
+\begin_inset Formula 
+\[
+\langle S\rangle=\set{\sum_{j=1}^{n}r_{j}s_{j}}{r_{j}\in R,\s s_{j}\in S,\s1\leq j\leq n\in\mathbb{N}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Ideals represent equations: 
+\begin_inset Formula $\langle x-y\rangle$
+\end_inset
+
+ is the set of 0-elements, if 
+\begin_inset Formula $x=y$
+\end_inset
+
+ were to hold
+\end_layout
+
+\begin_layout Itemize
+E.g.
+ in the language of ideals one asks:
+\begin_inset Newline newline
+\end_inset
+
+Does 
+\begin_inset Formula $xy\in\langle x+y-z,\s x^{2}+y^{2}-z^{2}\rangle$
+\end_inset
+
+?
+\end_layout
+
+\begin_layout Itemize
+Naturally this is a question in ring 
+\begin_inset Formula $R\left[x,y,z\right]$
+\end_inset
+
+ where 
+\begin_inset Formula $R$
+\end_inset
+
+ comes from the problem
+\end_layout
+
+\begin_layout Itemize
+The use of Gröbner-bases requires 
+\begin_inset Formula $R$
+\end_inset
+
+ to be a field
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Idea: simplify
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
++-
+\end_layout
+
+\end_inset
+
+Example problem: 
+\begin_inset Formula $xy\in\langle x+y-z,\s x^{2}+y^{2}-z^{2}\rangle$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Let 
+\begin_inset Formula $y$
+\end_inset
+
+ and 
+\begin_inset Formula $z$
+\end_inset
+
+ be simpler than 
+\begin_inset Formula $x$
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Formula $\implies x+y-z$
+\end_inset
+
+ becomes a simplification rule 
+\begin_inset Formula $x\to z-y$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $xy=\left(z-y\right)y=zy-y^{2}$
+\end_inset
+
+ and 
+\begin_inset Formula $x^{2}+y^{2}-z^{2}=z^{2}-2yz+y^{2}+y^{2}-z^{2}=2y^{2}-2yz$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Result: 
+\begin_inset Formula $zy-y^{2}\in\langle...,\s2y^{2}-2yz\rangle$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Let 
+\begin_inset Formula $z$
+\end_inset
+
+ be simpler than 
+\begin_inset Formula $y$
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Formula $\implies2y^{2}-2yz$
+\end_inset
+
+ becomes a simplification rule 
+\begin_inset Formula ${\color{gray}2}y^{2}\to{\color{gray}2}yz$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $zy-y^{2}=zy-{\color{gray}\nicefrac{1}{2}(2}zy{\color{gray})}=0$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Result: 
+\begin_inset Formula $0\in\langle...\rangle$
+\end_inset
+
+—certainly true!
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Simplicity order
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Let 
+\begin_inset Formula $M$
+\end_inset
+
+ be the least simple monomial of 
+\begin_inset Formula $P$
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Formula $\implies P$
+\end_inset
+
+ becomes a simplification rule 
+\begin_inset Formula $M\to M-P$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Some properties are required to admit an order as simplifying
+\end_layout
+
+\begin_layout Definition
+An order 
+\begin_inset Formula $\leq$
+\end_inset
+
+ on monomials is admissible if
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+it is linear,
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset Formula $M_{1}\leq M_{2}\implies NM_{1}\leq NM_{2}$
+\end_inset
+
+ for all monomials 
+\begin_inset Formula $N,M_{1},M_{2}$
+\end_inset
+
+, and
+\end_layout
+
+\begin_layout Enumerate
+it is well-founded.
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+Given 1.
+ and 2., well-foundedness 
+\begin_inset Formula $\Leftrightarrow$
+\end_inset
+
+ monomial 1 is the bottom
+\end_layout
+
+\begin_layout Itemize
+Well-foundedness ensures that normal forms exist
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Common orderings
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Monomials of ring 
+\begin_inset Formula $K\left[X_{1},...,X_{n}\right]$
+\end_inset
+
+ are isomorphic to 
+\begin_inset Formula $\mathbb{N}^{n}$
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+(consider exponent sequences; × becomes +)
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+Lexicographic order 
+\begin_inset Flex Visible
+status open
+
+\begin_layout Plain Layout
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+3-
+\end_layout
+
+\end_inset
+
+
+\size footnotesize
+\color brown
+(informative)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+Reverse lexicographic order and other permutations
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+3-
+\end_layout
+
+\end_inset
+
+Total degree lex.
+ order 
+\size footnotesize
+\color brown
+(economic)
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+3-
+\end_layout
+
+\end_inset
+
+primarily compare total degree 
+\begin_inset Formula $\makeop{deg}\prod_{j}X_{j}^{e_{j}}=\sum_{j}e_{j}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+3-
+\end_layout
+
+\end_inset
+
+secondarily compare lexicographically
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+4-
+\end_layout
+
+\end_inset
+
+Orders built in stages
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+4-
+\end_layout
+
+\end_inset
+
+e.g.
+ lexicographically 
+\begin_inset Formula $X_{1}$
+\end_inset
+
+, then deg.lex.
+ 
+\begin_inset Formula $\left(X_{2},...,X_{n}\right)$
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+4-
+\end_layout
+
+\end_inset
+
+Instead of exponent sum, use max, min, weighted sum, power sum, ...
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+5-
+\end_layout
+
+\end_inset
+
+From now on, consider a fixed admissible order
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Gröbner-bases
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Just simplifying is not enough: consider 
+\begin_inset Formula $x^{2}-y\in\langle xy^{2}-x-y,\s x^{2}y-x-1\rangle$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Definitions
+Fix 
+\begin_inset Formula $B\subseteq K\left[X_{1},...,X_{n}\right]$
+\end_inset
+
+.
+ An associated rewrite/simplification relation is defined by
+\begin_inset Formula 
+\[
+P+NM\to P-N\left(R-M\right)
+\]
+
+\end_inset
+
+if 
+\begin_inset Formula $P$
+\end_inset
+
+ lacks multiple of monomial 
+\begin_inset Formula $NM$
+\end_inset
+
+ and 
+\begin_inset Formula $M$
+\end_inset
+
+ is least simple in 
+\begin_inset Formula $R\in B$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Definitions
+Let 
+\begin_inset Formula $\overset{*}{\to}$
+\end_inset
+
+ be transitive-reflexive- and 
+\begin_inset Formula $\overset{*}{\leftrightarrow}$
+\end_inset
+
+ be equivalence-closure of 
+\begin_inset Formula $\to$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Lemma
+\begin_inset Formula $P=R\s\makeop{mod}\s\langle B\rangle$
+\end_inset
+
+ iff 
+\begin_inset Formula $P\overset{*}{\leftrightarrow}R$
+\end_inset
+
+.
+\begin_inset Newline newline
+\end_inset
+
+Especially 
+\begin_inset Formula $P\in\langle B\rangle$
+\end_inset
+
+ iff 
+\begin_inset Formula $P\overset{*}{\leftrightarrow}0$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+We want to only check that 
+\begin_inset Formula $P\overset{*}{\to}0$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Definitions
+Rewriting 
+\begin_inset Formula $\to$
+\end_inset
+
+ is confluent if 
+\begin_inset Formula $P\overset{*}{\gets}\circ\overset{*}{\to}R$
+\end_inset
+
+ implies 
+\begin_inset Formula $P\overset{*}{\to}\circ\overset{*}{\gets}R$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Definitions
+\begin_inset Formula $B$
+\end_inset
+
+ is Gröbner-basis of 
+\begin_inset Formula $\langle B\rangle$
+\end_inset
+
+ if 
+\begin_inset Formula $\to$
+\end_inset
+
+ is confluent.
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Recognising Gröbner-basis
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Theorem
+As a terminating rewrite relation 
+\begin_inset Formula $\to$
+\end_inset
+
+ is confluent if 
+\begin_inset Formula $P\gets\circ\to R$
+\end_inset
+
+ implies 
+\begin_inset Formula $P\overset{*}{\to}\circ\overset{*}{\gets}R$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+A further pinpointing of possible failure leads to 
+\begin_inset Formula $S$
+\end_inset
+
+-polynomials
+\end_layout
+
+\begin_layout Itemize
+Let 
+\begin_inset Formula $M$
+\end_inset
+
+ be least simple (aka leading) monomial of 
+\begin_inset Formula $M+P$
+\end_inset
+
+ and likewise for 
+\begin_inset Formula $N$
+\end_inset
+
+ and 
+\begin_inset Formula $N+R$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $-NP\gets NM\to-MR$
+\end_inset
+
+ as well as after dividing by 
+\begin_inset Formula $\makeop{gcd}\left\{ M,N\right\} $
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula ${\displaystyle S\left(M+P,N+R\right):=\frac{NP-MR}{\makeop{gcd}\left\{ M,N\right\} }}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Theorem
+If 
+\begin_inset Formula $S\left(P,R\right)\overset{*}{\to}0$
+\end_inset
+
+ for all 
+\begin_inset Formula $P,R\in B$
+\end_inset
+
+, then 
+\begin_inset Formula $B$
+\end_inset
+
+ is a Gröbner-basis.
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Buchberger's algorithm
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Given 
+\begin_inset Formula $B$
+\end_inset
+
+, find a Gröbner-basis of 
+\begin_inset Formula $\langle B\rangle$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Compute 
+\begin_inset Formula $S$
+\end_inset
+
+-polynomials between pairs of polynomials in 
+\begin_inset Formula $B$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Simplify them
+\end_layout
+
+\begin_layout Enumerate
+Add to 
+\begin_inset Formula $B$
+\end_inset
+
+ the non-zero simplified ones
+\end_layout
+
+\begin_layout Enumerate
+Repeat from step 2 until 
+\begin_inset Formula $B$
+\end_inset
+
+ stabilizes
+\end_layout
+
+\begin_layout Enumerate
+Simplify elements in 
+\begin_inset Formula $B$
+\end_inset
+
+ by each others
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Example run
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
++-
+\end_layout
+
+\end_inset
+
+Given 
+\begin_inset Formula $\left\{ {\color{blue}xy^{2}}-x-y,\s{\color{blue}x^{2}y}-x-1\right\} $
+\end_inset
+
+, use deg.lex.
+ with 
+\begin_inset Formula $x>y$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula ${\color{blue}S}:\s x\left(-x{\color{gray}-y}\right)-y\left({\color{gray}-x}-1\right)=-\left(x^{2}-y\right)$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $\left\{ {\color{blue}xy^{2}}-x-y,\s\underline{x^{2}y}-x-1,\s\underline{{\color{blue}x^{2}}}-y\right\} $
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula ${\color{blue}S'}:\s x\left({\color{gray}-x}-y\right)-y^{2}\left(-y\right)\to y^{3}-xy{\color{gray}-y}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $\underline{S}:\s-x-1-y\left(-y\right)=y^{2}-x-1$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Next and final round: 7 new S-polynomials reduce to 0
+\begin_inset Newline newline
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Itemize
+With simplification after 
+\begin_inset Formula ${\color{blue}S}$
+\end_inset
+
+: 
+\begin_inset Formula $\left\{ xy^{2}-x-y,\s x^{2}y-x-1,\s{\color{blue}x^{2}}-y\right\} $
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula ${\color{blue}x^{2}}y-x-1\to{\color{purple}y^{2}}-x-1$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $x{\color{purple}y^{2}}-x-y\to\left({\color{blue}x^{2}}+{\color{gray}x}\right){\color{gray}-x}-y\to{\color{gray}y-y}=0$
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Itemize
+Result: 
+\begin_inset Formula $\left\{ x^{2}-y,\s y^{2}-x-1\right\} $
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Representing polynomials in Lean
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+The 
+\emph on
+mv_polynomial
+\emph default
+ might be converted to noncomputable
+\end_layout
+
+\begin_layout Itemize
+Hence must implement own custom data type
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+Operations on monomials needed to compute Gröbner-bases:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+order comparison
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+gcd, lcm
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+division
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+List of exponents
+\begin_inset Flex Visible
+status open
+
+\begin_layout Plain Layout
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+4-
+\end_layout
+
+\end_inset
+
+—
+\color magenta
+my bad choice
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Flex Visible
+status open
+
+\begin_layout Plain Layout
+
+\color none
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+3-
+\end_layout
+
+\end_inset
+
+simpler and often more (space) efficient
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+Mapping from indeterminates to exponents
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Flex Visible
+status open
+
+\begin_layout Plain Layout
+
+\color none
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+3-
+\end_layout
+
+\end_inset
+
+allows idiomatically to parameterise by type of indeterminates
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Representing polynomials in Lean
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Operations of polynomials needed to compute Gröbner-bases:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+addition
+\end_layout
+
+\begin_layout Itemize
+multiplication 
+\color gray
+(by monomial)
+\end_layout
+
+\begin_layout Itemize
+determine leading (least simple) monomial
+\end_layout
+
+\begin_layout Itemize
+test for 0
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Alternative
+status open
+
+\begin_layout Plain Layout
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+4-
+\end_layout
+
+\end_inset
+
+
+\begin_inset Argument 2
+status open
+
+\begin_layout Plain Layout
+
+\strikeout on
+\color magenta
+\begin_inset Formula ${\color{black}\text{Tensor / nD-matrix of coefficients}}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Structure
+status collapsed
+
+\begin_layout Plain Layout
+
+\color black
+Tensor / nD-matrix of coefficients
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Flex Visible
+status open
+
+\begin_layout Plain Layout
+
+\color none
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+3-
+\end_layout
+
+\end_inset
+
+wastes space: 
+\begin_inset Formula $\sum_{j=1}^{n}X_{j}^{2}$
+\end_inset
+
+ needs exponential 
+\begin_inset Formula $\mathcal{O}\left(2^{n}\right)$
+\end_inset
+
+ memory
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+List of (monomial, coefficient)-pairs
+\begin_inset Flex Visible
+status open
+
+\begin_layout Plain Layout
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+4-
+\end_layout
+
+\end_inset
+
+—
+\color magenta
+state of art
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Flex Visible
+status open
+
+\begin_layout Plain Layout
+
+\color none
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+3-
+\end_layout
+
+\end_inset
+
+efficient multiplication demands extra temporary structures
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+Tree of (monomial, coefficient)-pairs
+\begin_inset Flex Visible
+status open
+
+\begin_layout Plain Layout
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+4-
+\end_layout
+
+\end_inset
+
+—
+\color magenta
+my choice
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Flex Visible
+status open
+
+\begin_layout Plain Layout
+
+\color none
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+3-
+\end_layout
+
+\end_inset
+
+most constant overhead
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+Hash map from monomials to coefficients
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Flex Visible
+status open
+
+\begin_layout Plain Layout
+
+\color none
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+3-
+\end_layout
+
+\end_inset
+
+leading term is expensive to find
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2-
+\end_layout
+
+\end_inset
+
+Single variate recursive via 
+\begin_inset Formula $K\left[\seq X,Y\right]\cong K\left[\seq X\right]\left[Y\right]$
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Flex Visible
+status open
+
+\begin_layout Plain Layout
+
+\color none
+\begin_inset Argument 1
+status open
+
+\begin_layout Plain Layout
+3-
+\end_layout
+
+\end_inset
+
+tricky in typed setting
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Take a look at the code
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+I used 
+\emph on
+rbtree
+\emph default
+ which is a non-meta variant of 
+\emph on
+rb_tree
+\end_layout
+
+\begin_layout Itemize
+Meta could have been used through out the code, but in the beginning it
+ was undecided wether to also formalize the theory of Gröbner-bases
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Reconstructing the proof
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Let 
+\begin_inset Formula $B$
+\end_inset
+
+ be the initial basis and 
+\begin_inset Formula $G$
+\end_inset
+
+ the derived Gröbner-basis
+\end_layout
+
+\begin_layout Itemize
+We want to know that 
+\begin_inset Formula $P\xrightarrow[G]{*}R\implies P-R\in\langle B\rangle$
+\end_inset
+
+, and 
+\begin_inset Formula $G\subseteq\langle B\rangle$
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+Ideal membership can be certified by producing the coefficient polynomials
+ 
+\begin_inset Formula $\seq c$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+
+\begin_inset Formula $P-R=\seq c\bullet B$
+\end_inset
+
+ can be conveniently checked by the 
+\emph on
+ring
+\emph default
+ tactic
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+
+\begin_inset Formula $\seq c\bullet B=0$
+\end_inset
+
+, given each 
+\begin_inset Formula $b\in B$
+\end_inset
+
+ is 0, can often be checked by 
+\emph on
+simp
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+Not failsafe
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+Proof is built manually by repeatedly applying lemma 
+\begin_inset Formula $x=y\implies O=0\implies O-c\left(x-y\right)=0$
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+Finally lemma 
+\begin_inset Formula $P-R=O\implies O=0\implies P=R$
+\end_inset
+
+ finishes
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Using the tactic
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Requiring terms to have field type would be too restrictive
+\end_layout
+
+\begin_layout Itemize
+Ask for a ring and a vector space over a coefficient field
+\end_layout
+
+\begin_layout Itemize
+One can test if type of an expression is ring or vector space over known
+ field by 
+\emph on
+apply_instance
+\end_layout
+
+\begin_layout Itemize
+Testing vector spaceness over to-be-determined field is not possible this
+ way
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Formula $\implies$
+\end_inset
+
+field must be given as a paramter to the tactic
+\begin_inset Newline newline
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+Good to find normal forms other than 0 too
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+E.g.
+ 
+\begin_inset Formula $x=y\vdash xF\left(2x^{2}-y^{2}\right)-yF\left(xy\right)=0$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Argument item:2
+status open
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+Bottom-up simplification strategy (or repeat until stabilisation)
+\end_layout
+
+\end_deeper
+\end_body
+\end_document
